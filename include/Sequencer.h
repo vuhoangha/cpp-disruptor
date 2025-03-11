@@ -4,8 +4,6 @@
 #include <string>
 #include <cstdint>
 
-// Header-only implementation for maximum performance
-// All methods are inlined to allow compiler optimizations
 namespace disruptor
 {
     inline constexpr size_t CACHE_LINE_SIZE = 64;
