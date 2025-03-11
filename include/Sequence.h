@@ -9,6 +9,9 @@ namespace disruptor
     inline constexpr size_t CACHE_LINE_SIZE = 64;
 
     /**
+     * đảm bảo rằng mỗi đối tượng của class này sẽ bắt đầu tại địa chỉ bộ nhớ là bội số của CACHE_LINE_SIZE (64 bytes)
+     * khi đó đối tượng này sẽ nằm trong 1 cache line riêng biệt, không bị false sharing
+     * 
      * Concurrent sequence class used for tracking the progress of
      * the ring buffer and event processors. Support a number
      * of concurrent operations including CAS and order writes.
