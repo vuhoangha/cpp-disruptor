@@ -8,7 +8,6 @@
 // All methods are inlined to allow compiler optimizations
 namespace disruptor
 {
-    // Định nghĩa kích thước cache line
     inline constexpr size_t CACHE_LINE_SIZE = 64;
 
     /**
