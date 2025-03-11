@@ -1,0 +1,232 @@
+classDiagram
+    %% Interfaces cơ bản
+    class DataProvider~T~ {
+        <<interface>>
+        +get(long sequence): T
+    }
+    
+    class Cursored {
+        <<interface>>
+        +getCursor(): long
+    }
+    
+    class Sequenced {
+        <<interface>>
+        +getBufferSize(): int
+        +getCursor(): long
+        +next(): long
+        +next(int n): long
+        +tryNext(): long
+        +tryNext(int n): long
+        +remainingCapacity(): long
+    }
+    
+    class EventSequencer~T~ {
+        <<interface>>
+    }
+    
+    class Sequencer {
+        <<interface>>
+        +claim(long sequence): void
+        +isAvailable(long sequence): boolean
+        +getHighestPublishedSequence(long nextSequence, long availableSequence): long
+        +addGatingSequences(Sequence... gatingSequences): void
+        +removeGatingSequence(Sequence gatingSequence): boolean
+        +newBarrier(Sequence... sequencesToTrack): SequenceBarrier
+        +getMinimumSequence(): long
+        +createWorkerPool(EventFactory~T~ factory, ExceptionHandler~T~ exceptionHandler): WorkerPool~T~
+    }
+    
+    class EventSink~E~ {
+        <<interface>>
+        +publishEvent(EventTranslator~E~ translator): void
+        +tryPublishEvent(EventTranslator~E~ translator): boolean
+        +publishEvents(EventTranslator~E~[] translators): void
+        +publishEvents(EventTranslator~E~[] translators, int batchStartsAt, int batchSize): void
+        +tryPublishEvents(EventTranslator~E~[] translators): boolean
+        +tryPublishEvents(EventTranslator~E~[] translators, int batchStartsAt, int batchSize): boolean
+    }
+    
+    class EventProcessor {
+        <<interface>>
+        +run(): void
+        +getSequence(): Sequence
+        +halt(): void
+        +isRunning(): boolean
+    }
+    
+    class EventHandler~T~ {
+        <<interface>>
+        +onEvent(T event, long sequence, boolean endOfBatch): void
+    }
+    
+    class WaitStrategy {
+        <<interface>>
+        +waitFor(long sequence, Sequence cursor, Sequence[] dependents, SequenceBarrier barrier): long
+        +signalAllWhenBlocking(): void
+    }
+    
+    class SequenceBarrier {
+        <<interface>>
+        +waitFor(long sequence): long
+        +getCursor(): long
+        +isAlerted(): boolean
+        +alert(): void
+        +clearAlert(): void
+        +checkAlert(): void
+    }
+    
+    %% Abstract classes
+    class AbstractSequencer {
+        <<abstract>>
+        #gatingSequences: Sequence[]
+        +getBufferSize(): int
+        +getCursor(): long
+        +addGatingSequences(Sequence... gatingSequences): void
+        +removeGatingSequence(Sequence gatingSequence): boolean
+        +getMinimumSequence(): long
+        +newBarrier(Sequence... sequencesToTrack): SequenceBarrier
+    }
+    
+    %% Concrete classes
+    class SingleProducerSequencer {
+        -cursor: Sequence
+        -nextValue: long
+        -cachedValue: long
+        +hasAvailableCapacity(int requiredCapacity): boolean
+        +next(): long
+        +next(int n): long
+        +tryNext(): long
+        +tryNext(int n): long
+        +publish(long sequence): void
+        +isAvailable(long sequence): boolean
+    }
+    
+    class MultiProducerSequencer {
+        -availableBuffer: int[]
+        -indexMask: int
+        -indexShift: int
+        +hasAvailableCapacity(int requiredCapacity): boolean
+        +next(): long
+        +next(int n): long
+        +tryNext(): long
+        +tryNext(int n): long
+        +publish(long sequence): void
+        +isAvailable(long sequence): boolean
+    }
+    
+    class RingBuffer~E~ {
+        -entries: E[]
+        -sequencer: Sequencer
+        +get(long sequence): E
+        +publishEvent(EventTranslator~E~ translator): void
+        +tryPublishEvent(EventTranslator~E~ translator): boolean
+        +next(): long
+        +next(int n): long
+        +tryNext(): long
+        +tryNext(int n): long
+        +publish(long sequence): void
+        +addGatingSequences(Sequence... gatingSequences): void
+    }
+    
+    class BatchEventProcessor~T~ {
+        -dataProvider: DataProvider~T~
+        -sequenceBarrier: SequenceBarrier
+        -eventHandler: EventHandler~T~
+        -sequence: Sequence
+        -running: boolean
+        +run(): void
+        +getSequence(): Sequence
+        +halt(): void
+        +isRunning(): boolean
+        +setExceptionHandler(ExceptionHandler~T~ exceptionHandler): void
+    }
+    
+    class ProcessingSequenceBarrier {
+        -waitStrategy: WaitStrategy
+        -cursor: Sequence
+        -dependentSequence: Sequence
+        -alerted: boolean
+        +waitFor(long sequence): long
+        +getCursor(): long
+        +isAlerted(): boolean
+        +alert(): void
+        +clearAlert(): void
+        +checkAlert(): void
+    }
+    
+    class BlockingWaitStrategy {
+        -lock: ReentrantLock
+        -processorNotifyCondition: Condition
+        +waitFor(long sequence, Sequence cursor, Sequence[] dependents, SequenceBarrier barrier): long
+        +signalAllWhenBlocking(): void
+    }
+    
+    class YieldingWaitStrategy {
+        +waitFor(long sequence, Sequence cursor, Sequence[] dependents, SequenceBarrier barrier): long
+        +signalAllWhenBlocking(): void
+    }
+    
+    class SleepingWaitStrategy {
+        -retries: int
+        -sleepTimeNs: int
+        +waitFor(long sequence, Sequence cursor, Sequence[] dependents, SequenceBarrier barrier): long
+        +signalAllWhenBlocking(): void
+    }
+    
+    class Disruptor~T~ {
+        -ringBuffer: RingBuffer~T~
+        -executor: Executor
+        -consumerRepository: ConsumerRepository~T~
+        +handleEventsWith(EventHandler~T~... handlers): EventHandlerGroup~T~
+        +handleEventsWith(EventProcessor... processors): EventHandlerGroup~T~
+        +disruptorStarted(): void
+        +start(): RingBuffer~T~
+        +shutdown(): void
+        +getRingBuffer(): RingBuffer~T~
+        +getSequenceValueFor(EventHandler~T~ handler): long
+    }
+    
+    class Sequence {
+        -value: long
+        +get(): long
+        +set(long value): void
+        +incrementAndGet(): long
+        +addAndGet(long increment): long
+        +compareAndSet(long expectedValue, long newValue): boolean
+    }
+    
+    %% Mối quan hệ giữa các interface
+    DataProvider <|-- EventSequencer
+    Sequenced <|-- EventSequencer
+    Sequenced <|-- Sequencer
+    Cursored <|-- Sequenced
+    
+    %% Mối quan hệ triển khai
+    EventSequencer <|.. RingBuffer
+    EventSink <|.. RingBuffer
+    Cursored <|.. RingBuffer
+    
+    Sequencer <|.. AbstractSequencer
+    AbstractSequencer <|-- SingleProducerSequencer
+    AbstractSequencer <|-- MultiProducerSequencer
+    
+    EventProcessor <|.. BatchEventProcessor
+    SequenceBarrier <|.. ProcessingSequenceBarrier
+    WaitStrategy <|.. BlockingWaitStrategy
+    WaitStrategy <|.. YieldingWaitStrategy
+    WaitStrategy <|.. SleepingWaitStrategy
+    
+    %% Mối quan hệ sử dụng
+    RingBuffer --> Sequencer : uses
+    RingBuffer --> Sequence : uses
+    BatchEventProcessor --> DataProvider : uses
+    BatchEventProcessor --> SequenceBarrier : uses
+    BatchEventProcessor --> EventHandler : uses
+    ProcessingSequenceBarrier --> WaitStrategy : uses
+    ProcessingSequenceBarrier --> Sequence : uses
+    Disruptor --> RingBuffer : uses
+    Disruptor --> EventProcessor : creates
+    Disruptor --> EventHandler : manages
+    Sequencer --> SequenceBarrier : creates
+    Sequencer --> Sequence : manages
