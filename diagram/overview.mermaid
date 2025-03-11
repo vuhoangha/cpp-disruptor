@@ -13,12 +13,14 @@ classDiagram
     class Sequenced {
         <<interface>>
         +getBufferSize(): int
-        +getCursor(): long
+        +hasAvailableCapacity(int requiredCapacity): boolean
+        +remainingCapacity(): long
         +next(): long
         +next(int n): long
         +tryNext(): long
         +tryNext(int n): long
-        +remainingCapacity(): long
+        +publish(long sequence): void
+        +publish(long lo, long hi): void
     }
     
     class EventSequencer~T~ {
@@ -27,14 +29,15 @@ classDiagram
     
     class Sequencer {
         <<interface>>
+        +INITIAL_CURSOR_VALUE: long
         +claim(long sequence): void
         +isAvailable(long sequence): boolean
-        +getHighestPublishedSequence(long nextSequence, long availableSequence): long
         +addGatingSequences(Sequence... gatingSequences): void
         +removeGatingSequence(Sequence gatingSequence): boolean
         +newBarrier(Sequence... sequencesToTrack): SequenceBarrier
         +getMinimumSequence(): long
-        +createWorkerPool(EventFactory~T~ factory, ExceptionHandler~T~ exceptionHandler): WorkerPool~T~
+        +getHighestPublishedSequence(long nextSequence, long availableSequence): long
+        +newPoller(DataProvider~T~ provider, Sequence... gatingSequences): EventPoller~T~
     }
     
     class EventSink~E~ {
@@ -80,12 +83,14 @@ classDiagram
     class AbstractSequencer {
         <<abstract>>
         #gatingSequences: Sequence[]
+        +AbstractSequencer(int bufferSize, WaitStrategy waitStrategy)
         +getBufferSize(): int
-        +getCursor(): long
         +addGatingSequences(Sequence... gatingSequences): void
         +removeGatingSequence(Sequence gatingSequence): boolean
         +getMinimumSequence(): long
         +newBarrier(Sequence... sequencesToTrack): SequenceBarrier
+        +getCursor(): long
+        #createEventPoller(DataProvider~T~ dataProvider, Sequence... gatingSequences): EventPoller~T~
     }
     
     %% Concrete classes
@@ -93,6 +98,7 @@ classDiagram
         -cursor: Sequence
         -nextValue: long
         -cachedValue: long
+        +SingleProducerSequencer(int bufferSize, WaitStrategy waitStrategy)
         +hasAvailableCapacity(int requiredCapacity): boolean
         +next(): long
         +next(int n): long
@@ -106,6 +112,8 @@ classDiagram
         -availableBuffer: int[]
         -indexMask: int
         -indexShift: int
+        -cursor: Sequence
+        +MultiProducerSequencer(int bufferSize, WaitStrategy waitStrategy)
         +hasAvailableCapacity(int requiredCapacity): boolean
         +next(): long
         +next(int n): long
@@ -118,6 +126,7 @@ classDiagram
     class RingBuffer~E~ {
         -entries: E[]
         -sequencer: Sequencer
+        +RingBuffer(EventFactory~E~ eventFactory, Sequencer sequencer)
         +get(long sequence): E
         +publishEvent(EventTranslator~E~ translator): void
         +tryPublishEvent(EventTranslator~E~ translator): boolean
@@ -127,6 +136,7 @@ classDiagram
         +tryNext(int n): long
         +publish(long sequence): void
         +addGatingSequences(Sequence... gatingSequences): void
+        +getCursor(): long
     }
     
     class BatchEventProcessor~T~ {
@@ -135,6 +145,7 @@ classDiagram
         -eventHandler: EventHandler~T~
         -sequence: Sequence
         -running: boolean
+        +BatchEventProcessor(DataProvider~T~ dataProvider, SequenceBarrier sequenceBarrier, EventHandler~T~ eventHandler)
         +run(): void
         +getSequence(): Sequence
         +halt(): void
@@ -147,6 +158,7 @@ classDiagram
         -cursor: Sequence
         -dependentSequence: Sequence
         -alerted: boolean
+        +ProcessingSequenceBarrier(WaitStrategy waitStrategy, Sequence cursor, Sequence[] dependentSequences)
         +waitFor(long sequence): long
         +getCursor(): long
         +isAlerted(): boolean
@@ -155,32 +167,14 @@ classDiagram
         +checkAlert(): void
     }
     
-    class BlockingWaitStrategy {
-        -lock: ReentrantLock
-        -processorNotifyCondition: Condition
-        +waitFor(long sequence, Sequence cursor, Sequence[] dependents, SequenceBarrier barrier): long
-        +signalAllWhenBlocking(): void
-    }
-    
-    class YieldingWaitStrategy {
-        +waitFor(long sequence, Sequence cursor, Sequence[] dependents, SequenceBarrier barrier): long
-        +signalAllWhenBlocking(): void
-    }
-    
-    class SleepingWaitStrategy {
-        -retries: int
-        -sleepTimeNs: int
-        +waitFor(long sequence, Sequence cursor, Sequence[] dependents, SequenceBarrier barrier): long
-        +signalAllWhenBlocking(): void
-    }
-    
     class Disruptor~T~ {
         -ringBuffer: RingBuffer~T~
         -executor: Executor
         -consumerRepository: ConsumerRepository~T~
+        +Disruptor(EventFactory~T~ eventFactory, int ringBufferSize, Executor executor)
+        +Disruptor(EventFactory~T~ eventFactory, int ringBufferSize, Executor executor, ProducerType producerType, WaitStrategy waitStrategy)
         +handleEventsWith(EventHandler~T~... handlers): EventHandlerGroup~T~
         +handleEventsWith(EventProcessor... processors): EventHandlerGroup~T~
-        +disruptorStarted(): void
         +start(): RingBuffer~T~
         +shutdown(): void
         +getRingBuffer(): RingBuffer~T~
@@ -189,6 +183,9 @@ classDiagram
     
     class Sequence {
         -value: long
+        +INITIAL_VALUE: long
+        +Sequence()
+        +Sequence(long initialValue)
         +get(): long
         +set(long value): void
         +incrementAndGet(): long
@@ -199,8 +196,8 @@ classDiagram
     %% Mối quan hệ giữa các interface
     DataProvider <|-- EventSequencer
     Sequenced <|-- EventSequencer
+    Cursored <|-- Sequencer
     Sequenced <|-- Sequencer
-    Cursored <|-- Sequenced
     
     %% Mối quan hệ triển khai
     EventSequencer <|.. RingBuffer
@@ -213,9 +210,6 @@ classDiagram
     
     EventProcessor <|.. BatchEventProcessor
     SequenceBarrier <|.. ProcessingSequenceBarrier
-    WaitStrategy <|.. BlockingWaitStrategy
-    WaitStrategy <|.. YieldingWaitStrategy
-    WaitStrategy <|.. SleepingWaitStrategy
     
     %% Mối quan hệ sử dụng
     RingBuffer --> Sequencer : uses
@@ -230,3 +224,4 @@ classDiagram
     Disruptor --> EventHandler : manages
     Sequencer --> SequenceBarrier : creates
     Sequencer --> Sequence : manages
+    AbstractSequencer --> WaitStrategy : uses
