@@ -3,9 +3,9 @@
 #include <cstdint>
 #include <memory>
 #include <vector>
-#include "Cursored.h"
-#include "Sequenced.h"
-#include "Sequence.h"
+#include "Cursored.hpp"
+#include "Sequenced.hpp"
+#include "Sequence.hpp"
 
 namespace disruptor
 {

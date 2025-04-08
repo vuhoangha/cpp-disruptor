@@ -2,3 +2,5 @@
 - Tối ưu rẽ nhánh (Branch Prediction Cache)
 - Tối ưu sử dụng SIMD
     + áp dụng cho getMinimumSequence
+- Sử dụng "noexcept" nếu có thể
+- Sử dụng "const", "constexpr" nếu có thể

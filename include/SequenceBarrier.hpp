@@ -1,8 +1,8 @@
 #pragma once
 
 #include <cstdint>
-#include "AlertException.h"
-#include "TimeoutException.h"
+#include "AlertException.hpp"
+#include "TimeoutException.hpp"
 
 namespace disruptor
 {
@@ -54,7 +54,7 @@ namespace disruptor
          *
          * @throws AlertException if alert has been raised.
          */
-        virtual void checkAlert() = 0;
+        virtual void checkAlert() const = 0;
     };
 
 } // namespace disruptor

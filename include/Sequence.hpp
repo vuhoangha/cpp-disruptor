@@ -52,7 +52,7 @@ namespace disruptor
          *
          * @return The current value of the sequence.
          */
-        inline int64_t get() const
+        [[nodiscard]] virtual inline int64_t get() const
         {
             // Use acquire semantics to ensure all subsequent reads see previous writes
             return value.load(std::memory_order_acquire);
@@ -64,7 +64,7 @@ namespace disruptor
          *
          * @param newValue The new value for the sequence.
          */
-        inline void set(int64_t newValue)
+        [[nodiscard]] virtual inline void set(int64_t newValue)
         {
             // Use release semantics to ensure all previous writes are visible
             value.store(newValue, std::memory_order_release);
@@ -78,7 +78,7 @@ namespace disruptor
          *
          * @param newValue The new value for the sequence.
          */
-        inline void setVolatile(int64_t newValue)
+        [[nodiscard]] virtual inline void setVolatile(int64_t newValue)
         {
             // Use sequential consistency for full fence semantics
             value.store(newValue, std::memory_order_seq_cst);
@@ -91,7 +91,7 @@ namespace disruptor
          * @param newValue The value to update to.
          * @return true if the operation succeeds, false otherwise.
          */
-        inline bool compareAndSet(int64_t expectedValue, int64_t newValue)
+        [[nodiscard]] virtual inline bool compareAndSet(int64_t expectedValue, int64_t newValue)
         {
             // Use sequential consistency for full fence semantics
             return value.compare_exchange_strong(expectedValue, newValue,
@@ -103,7 +103,7 @@ namespace disruptor
          *
          * @return The value after the increment
          */
-        inline int64_t incrementAndGet()
+        [[nodiscard]] virtual inline int64_t incrementAndGet()
         {
             return addAndGet(1);
         }
@@ -114,7 +114,7 @@ namespace disruptor
          * @param increment The value to add to the sequence.
          * @return The value after the increment.
          */
-        inline int64_t addAndGet(int64_t increment)
+        [[nodiscard]] virtual inline int64_t addAndGet(int64_t increment)
         {
             // Use sequential consistency for full fence semantics
             return value.fetch_add(increment, std::memory_order_seq_cst) + increment;
@@ -126,7 +126,7 @@ namespace disruptor
          * @param increment The value to add to the sequence.
          * @return the value before increment
          */
-        inline int64_t getAndAdd(int64_t increment)
+        [[nodiscard]] virtual inline int64_t getAndAdd(int64_t increment)
         {
             // Use sequential consistency for full fence semantics
             return value.fetch_add(increment, std::memory_order_seq_cst);
@@ -135,7 +135,7 @@ namespace disruptor
         /**
          * Convert the sequence to a string.
          */
-        inline std::string toString() const
+        [[nodiscard]] virtual inline std::string toString() const
         {
             return std::to_string(get());
         }

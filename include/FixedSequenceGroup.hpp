@@ -23,8 +23,8 @@
 #include <stdexcept>
 #include <format>
 
-#include "Sequence.h"
-#include "Util.h"
+#include "Sequence.hpp"
+#include "Util.hpp"
 
 namespace disruptor
 {
@@ -70,10 +70,10 @@ namespace disruptor
          *
          * @return the minimum sequence value for the group.
          */
-        [[nodiscard]] int64_t get() const override
+        [[nodiscard]] inline int64_t get() const override
         {
             /**
-             * __PERF: 
+             * __PERF:
              *     - với sequences.length >=3
              *     sử dụng thread local cho 2 biến giá trị nhỏ nhất và index tương ứng.
              *     chỗ này xem xét cache lại giá trị nhỏ nhất và index trong vector sequences tương ứng.

@@ -5,7 +5,7 @@
 #include <thread>
 #include <chrono>
 #include <mutex>
-#include "Sequence.h"
+#include "Sequence.hpp"
 
 namespace disruptor
 {
@@ -19,12 +19,12 @@ namespace disruptor
             return 1 << (32 - __builtin_clz(x - 1));
         }
 
-        static int64_t getMinimumSequence(const std::vector<Sequence> &sequences, int64_t minimum = INT64_MAX)
+        static int64_t getMinimumSequence(const std::vector<std::shared_ptr<Sequence>> &sequences, int64_t minimum = INT64_MAX)
         {
             int64_t minimumSequence = minimum;
             for (const auto &sequence : sequences)
             {
-                int64_t value = sequence.get();
+                int64_t value = sequence->get();
                 minimumSequence = std::min(minimumSequence, value);
             }
             return minimumSequence;

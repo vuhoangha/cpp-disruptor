@@ -1,10 +1,10 @@
 #pragma once
 
 #include <cstdint>
-#include "Sequence.h"
-#include "SequenceBarrier.h"
-#include "AlertException.h"
-#include "TimeoutException.h"
+#include "Sequence.hpp"
+#include "SequenceBarrier.hpp"
+#include "AlertException.hpp"
+#include "TimeoutException.hpp"
 
 namespace disruptor
 {
@@ -34,15 +34,20 @@ namespace disruptor
          * @throws TimeoutException if a timeout occurs before waiting completes (not used by some strategies)
          */
         [[nodiscard]] virtual int64_t waitFor(
-            int64_t sequence,
+            const int64_t sequence,
             const Sequence &cursor,
             const Sequence &dependentSequence,
-            const SequenceBarrier &barrier) = 0;
+            SequenceBarrier &barrier) = 0;
 
         /**
          * Implementations should signal the waiting EventProcessors that the cursor has advanced.
          */
         virtual void signalAllWhenBlocking() noexcept = 0;
+
+        /**
+         * String representation of the wait strategy
+         */
+        [[nodiscard]] virtual std::string toString() const = 0;
     };
 
 } // namespace disruptor

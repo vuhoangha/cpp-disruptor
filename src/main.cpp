@@ -1,6 +1,6 @@
 #include <iostream>
 #include <atomic>
-#include "../include/Sequence.h"
+#include "../include/Sequence.hpp"
 
 int main()
 {
