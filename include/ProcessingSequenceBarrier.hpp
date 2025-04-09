@@ -23,6 +23,7 @@
 #include "Sequence.hpp"
 #include "Sequencer.hpp"
 #include "FixedSequenceGroup.hpp"
+#include "AlertException.hpp"
 
 namespace disruptor
 {
@@ -35,59 +36,45 @@ namespace disruptor
     {
     private:
         std::unique_ptr<WaitStrategy> waitStrategy;
-        std::shared_ptr<Sequence> dependentSequence;
+        Sequence &dependentSequence;
         std::atomic<bool> alerted;
-        std::shared_ptr<Sequence> cursorSequence;
-        std::shared_ptr<Sequencer> sequencer;
+        Sequence &cursorSequence;
+        Sequencer &sequencer;
+        std::unique_ptr<FixedSequenceGroup> ownedSequenceGroup; // biến này để chứa lại object FixedSequenceGroup được tạo ra, tránh nó bị destructor làm lỗi biến "dependentSequence"
 
     public:
         ProcessingSequenceBarrier(
-            std::shared_ptr<Sequencer> sequencer,
+            Sequencer &sequencer,
             std::unique_ptr<WaitStrategy> waitStrategy,
-            std::shared_ptr<Sequence> cursorSequence,
+            Sequence &cursorSequence,
             const std::vector<std::shared_ptr<Sequence>> &dependentSequences)
             : waitStrategy(std::move(waitStrategy)),
               alerted(false),
               cursorSequence(cursorSequence),
-              sequencer(sequencer)
+              sequencer(sequencer),
+              // Khởi tạo ownedSequenceGroup trước
+              ownedSequenceGroup(dependentSequences.empty() ? nullptr : std::make_unique<FixedSequenceGroup>(dependentSequences)),
+              // Sau đó khởi tạo dependentSequence để tham chiếu đến đối tượng thích hợp
+              dependentSequence(dependentSequences.empty() ? cursorSequence : static_cast<Sequence &>(*ownedSequenceGroup))
         {
-            if (dependentSequences.empty())
-            {
-                dependentSequence = cursorSequence;
-            }
-            else
-            {
-                dependentSequence = std::make_shared<FixedSequenceGroup>(dependentSequences);
-            }
         }
 
         int64_t waitFor(int64_t sequence) override
         {
             checkAlert();
-
-
-
-
-            giờ phải fix mấy lỗi này
-
-
-
-
-
-            int64_t availableSequence = waitStrategy->waitFor(
-                sequence, cursorSequence.get(), dependentSequence.get(), this);
+            int64_t availableSequence = waitStrategy->waitFor(sequence, cursorSequence, dependentSequence, *this);
 
             if (availableSequence < sequence)
             {
                 return availableSequence;
             }
 
-            return sequencer->getHighestPublishedSequence(sequence, availableSequence);
+            return sequencer.getHighestPublishedSequence(sequence, availableSequence);
         }
 
         int64_t getCursor() const override
         {
-            return dependentSequence->get();
+            return dependentSequence.get();
         }
 
         bool isAlerted() const override

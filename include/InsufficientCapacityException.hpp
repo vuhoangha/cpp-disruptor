@@ -1,41 +1,23 @@
 #pragma once
-
 #include <exception>
+#include <string>
 
 namespace disruptor
 {
 
     class InsufficientCapacityException : public std::exception
     {
+    private:
+        std::string message;
+
     public:
-        /**
-         * Trả về thông báo lỗi
-         */
+        InsufficientCapacityException() : message("Insufficient capacity in the ring buffer") {}
+        explicit InsufficientCapacityException(const std::string &customMessage) : message(customMessage) {}
+
         const char *what() const noexcept override
         {
-            return "Insufficient capacity in the ring buffer";
+            return message.c_str();
         }
-
-        /**
-         * Đối tượng INSTANCE chỉ khởi tạo 1 lần
-         */
-        static InsufficientCapacityException& getInstance()
-        {
-            static InsufficientCapacityException INSTANCE;
-            return INSTANCE;
-        }
-
-    private:
-        /**
-         * Đảm bảo ko thể tạo object từ bên ngoài
-         */
-        InsufficientCapacityException() = default;
-
-        /**
-         * Tắt chức năng copy và gán để đảm bảo singleton
-         */
-        InsufficientCapacityException(const InsufficientCapacityException &) = delete;
-        InsufficientCapacityException &operator=(const InsufficientCapacityException &) = delete;
     };
 
 }

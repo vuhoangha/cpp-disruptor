@@ -22,60 +22,63 @@
 #include "Sequence.hpp"
 #include "SequenceBarrier.hpp"
 
-namespace disruptor {
-
-/**
- * Yielding strategy that uses a Thread.yield() for EventProcessors waiting on a barrier
- * after an initially spinning.
- *
- * This strategy will use 100% CPU, but will more readily give up the CPU than a busy spin strategy if other threads
- * require CPU resource.
- */
-class YieldingWaitStrategy : public WaitStrategy
+namespace disruptor
 {
-private:
-    static constexpr int SPIN_TRIES = 100;
 
-    inline int applyWaitMethod(SequenceBarrier& barrier, const int counter)
+    /**
+     * Yielding strategy that uses a Thread.yield() for EventProcessors waiting on a barrier
+     * after an initially spinning.
+     *
+     * This strategy will use 100% CPU, but will more readily give up the CPU than a busy spin strategy if other threads
+     * require CPU resource.
+     */
+    class YieldingWaitStrategy : public WaitStrategy
     {
-        barrier.checkAlert();
+    private:
+        static constexpr int SPIN_TRIES = 100;
 
-        if (0 == counter)
+        inline int applyWaitMethod(SequenceBarrier &barrier, const int counter)
         {
-            std::this_thread::yield();
-        }
-        else
-        {
-            return counter - 1;
-        }
+            barrier.checkAlert();
 
-        return counter;
-    }
+            if (0 == counter)
+            {
+                std::this_thread::yield();
+            }
+            else
+            {
+                return counter - 1;
+            }
 
-public:
-    int64_t waitFor(
-        const int64_t sequence, const Sequence& cursor, const Sequence& dependentSequence, SequenceBarrier& barrier) override
-    {
-        int64_t availableSequence;
-        int counter = SPIN_TRIES;
-
-        while ((availableSequence = dependentSequence.get()) < sequence)
-        {
-            counter = applyWaitMethod(barrier, counter);
+            return counter;
         }
 
-        return availableSequence;
-    }
+    public:
+        [[nodiscard]] int64_t waitFor(const int64_t sequence,
+                                      const Sequence &cursor,
+                                      const Sequence &dependent_sequence,
+                                      SequenceBarrier &barrier) override
+        {
+            int64_t availableSequence;
+            int counter = SPIN_TRIES;
 
-    void signalAllWhenBlocking() noexcept override
-    {
-        // Do nothing, this strategy doesn't block
-    }
-    
-    [[nodiscard]] std::string toString() const noexcept override
-    {
-        return "YieldingWaitStrategy";
-    }
-};
+            while ((availableSequence = dependent_sequence.get()) < sequence)
+            {
+                counter = applyWaitMethod(barrier, counter);
+            }
 
-} // namespace disruptor 
+            return availableSequence;
+        }
+
+        void signalAllWhenBlocking() noexcept override
+        {
+            // Do nothing, this strategy doesn't block
+        }
+
+        [[nodiscard]] std::string toString() const noexcept override
+        {
+            return "YieldingWaitStrategy";
+        }
+    };
+
+} // namespace disruptor

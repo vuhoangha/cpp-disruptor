@@ -1,45 +1,26 @@
 #pragma once
-
 #include <exception>
+#include <string>
 
 namespace disruptor
 {
+
     /**
      * Used to alert EventProcessors waiting at a SequenceBarrier of status changes.
-     *
-     * It does not fill in a stack trace for performance reasons.
      */
     class AlertException : public std::exception
     {
+    private:
+        std::string message;
+
     public:
-        /**
-         * Trả về thông báo lỗi
-         */
+        AlertException() : message("Alert status changed") {}
+        explicit AlertException(const std::string &customMessage) : message(customMessage) {}
+
         const char *what() const noexcept override
         {
-            return "Alert status changed";
+            return message.c_str();
         }
-
-        /**
-         * Đối tượng INSTANCE chỉ khởi tạo 1 lần
-         */
-        static AlertException &getInstance()
-        {
-            static AlertException INSTANCE;
-            return INSTANCE;
-        }
-
-    private:
-        /**
-         * Đảm bảo ko thể tạo object từ bên ngoài
-         */
-        AlertException() = default;
-
-        /**
-         * Tắt chức năng copy và gán để đảm bảo singleton
-         */
-        AlertException(const AlertException &) = delete;
-        AlertException &operator=(const AlertException &) = delete;
     };
 
-} // namespace disruptor
+}

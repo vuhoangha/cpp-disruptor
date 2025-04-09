@@ -1,6 +1,6 @@
 #pragma once
-
 #include <exception>
+#include <string>
 
 namespace disruptor
 {
@@ -11,35 +11,17 @@ namespace disruptor
      */
     class TimeoutException : public std::exception
     {
+    private:
+        std::string message;
+
     public:
-        /**
-         * Trả về thông báo lỗi
-         */
+        TimeoutException() : message("Operation timed out") {}
+        explicit TimeoutException(const std::string &customMessage) : message(customMessage) {}
+
         const char *what() const noexcept override
         {
-            return "Operation timed out";
+            return message.c_str();
         }
-
-        /**
-         * Đối tượng INSTANCE chỉ khởi tạo 1 lần
-         */
-        static TimeoutException &getInstance()
-        {
-            static TimeoutException INSTANCE;
-            return INSTANCE;
-        }
-
-    private:
-        /**
-         * Đảm bảo ko thể tạo object từ bên ngoài
-         */
-        TimeoutException() = default;
-
-        /**
-         * Tắt chức năng copy và gán để đảm bảo singleton
-         */
-        TimeoutException(const TimeoutException &) = delete;
-        TimeoutException &operator=(const TimeoutException &) = delete;
     };
 
-} // namespace disruptor
+}

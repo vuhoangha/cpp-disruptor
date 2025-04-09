@@ -34,12 +34,14 @@ namespace disruptor
     class BusySpinWaitStrategy : public WaitStrategy
     {
     public:
-        int64_t waitFor(
-            const int64_t sequence, const Sequence &cursor, const Sequence &dependentSequence, SequenceBarrier &barrier) override
+        [[nodiscard]] int64_t waitFor(const int64_t sequence,
+                                      const Sequence &cursor,
+                                      const Sequence &dependent_sequence,
+                                      SequenceBarrier &barrier) override
         {
             int64_t availableSequence;
 
-            while ((availableSequence = dependentSequence.get()) < sequence)
+            while ((availableSequence = dependent_sequence.get()) < sequence)
             {
                 barrier.checkAlert();
                 std::this_thread::yield(); // Equivalent to Thread.onSpinWait() in Java
