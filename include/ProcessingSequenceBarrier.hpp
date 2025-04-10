@@ -35,7 +35,7 @@ namespace disruptor
     class ProcessingSequenceBarrier : public SequenceBarrier
     {
     private:
-        std::unique_ptr<WaitStrategy> waitStrategy;
+        WaitStrategy &waitStrategy;
         Sequence &dependentSequence;
         std::atomic<bool> alerted;
         Sequence &cursorSequence;
@@ -45,10 +45,10 @@ namespace disruptor
     public:
         ProcessingSequenceBarrier(
             Sequencer &sequencer,
-            std::unique_ptr<WaitStrategy> waitStrategy,
+            WaitStrategy &waitStrategy,
             Sequence &cursorSequence,
             const std::vector<std::shared_ptr<Sequence>> &dependentSequences)
-            : waitStrategy(std::move(waitStrategy)),
+            : waitStrategy(waitStrategy),
               alerted(false),
               cursorSequence(cursorSequence),
               sequencer(sequencer),
@@ -62,7 +62,7 @@ namespace disruptor
         int64_t waitFor(int64_t sequence) override
         {
             checkAlert();
-            int64_t availableSequence = waitStrategy->waitFor(sequence, cursorSequence, dependentSequence, *this);
+            int64_t availableSequence = waitStrategy.waitFor(sequence, cursorSequence, dependentSequence, *this);
 
             if (availableSequence < sequence)
             {
@@ -85,7 +85,7 @@ namespace disruptor
         void alert() override
         {
             alerted.store(true, std::memory_order_release);
-            waitStrategy->signalAllWhenBlocking();
+            waitStrategy.signalAllWhenBlocking();
         }
 
         void clearAlert() override

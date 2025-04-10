@@ -5,4 +5,8 @@
 - Sử dụng "noexcept" nếu có thể
 - Sử dụng "const", "constexpr" nếu có thể
 - vì một số phần sử dụng đa hình nên cần tham chiếu đối tượng và con trỏ. Nhưng nếu muốn performance tốt hơn nữa thì sử dụng đối tượng trực tiếp ko cần đa hình. Nghiên cứu xem sao nhé
-
+- Các nơi dùng Sequence dùng chung thường đi liền với std::shared_ptr<Sequence>. Việc này tuy đảm bảo bộ nhớ ko bị rò rỉ nhưng làm chậm performance đi nhiều. Tìm cách cải thiện nó
+- Check xem máy chạy phần này có cache line là bao nhiêu để biết phần tránh false sharing. Thứ 2 là có vẻ chỉ giao thức MESI để giao tiếp giữa các CPU và bộ nhớ thì mới có tình trạng này. Tìm hiểu và tối ưu cẩn thận chỗ này nhé
+- Tận dụng CPU Registers (thanh ghi CPU)
+    - Registers là vùng lưu trữ siêu nhanh (1 chu kỳ CPU) ngay trong CPU
+    - Truy cập nhanh hơn L1 cache khoảng 3-10 lần
