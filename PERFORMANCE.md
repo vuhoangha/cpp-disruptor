@@ -10,3 +10,4 @@
 - Tận dụng CPU Registers (thanh ghi CPU)
     - Registers là vùng lưu trữ siêu nhanh (1 chu kỳ CPU) ngay trong CPU
     - Truy cập nhanh hơn L1 cache khoảng 3-10 lần
+- Tận dụng NUMA
