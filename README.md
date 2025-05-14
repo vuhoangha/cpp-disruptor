@@ -430,3 +430,47 @@ struct Wrapper
 };
 ```
 - Như ví dụ trên thì đối tượng "Wrapper" sẽ có địa chỉ bộ nhớ chia hết cho 64. safe_counter sẽ có địa chỉ chia hết cho 64, footer chia hết cho 32. Giữa header và safe_counter có padding 63 byte
+- Điều này còn hoạt động với cả class trong class và class kế thừa class nữa.
+- Ví dụ kế thừa:
+```c++
+// Base class
+class Wrapper_1 {
+public:
+    char header_1;
+    alignas(CACHE_LINE_SIZE) std::atomic<int64_t> safe_counter;
+};
+
+// Wrapper_2 kế thừa Wrapper_1
+class Wrapper_2 : public Wrapper_1 {
+public: char header_2;
+};
+
+// Wrapper_3 kế thừa Wrapper_2
+class Wrapper_3 : public Wrapper_2 {
+    public: char header_3;
+};
+
+// KẾT QUẢ: Wrapper_3 vẫn được căn chỉnh để có địa chỉ chia hết cho CACHE_LINE_SIZE
+```
+- Ví dụ class lồng nhau
+```c++
+// Ví dụ trong struct
+struct Wrapper_1
+{
+    char header_1;
+    alignas(CACHE_LINE_SIZE) std::atomic<int64_t> safe_counter;
+};
+struct Wrapper_2
+{
+    char header_2;
+    Wrapper_1 wrapper_1;
+};
+struct Wrapper_3
+{
+    char header_3;
+    Wrapper_2 wrapper_2;
+};
+Wrapper_3 wrapper_3;
+
+// KẾT QUẢ wrapper_3, wrapper_2, wrapper_1 sẽ được căn chỉnh ở vị trí chia hết cho CACHE_LINE_SIZE
+```
