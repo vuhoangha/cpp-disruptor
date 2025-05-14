@@ -418,3 +418,15 @@ int main() {
     return 0;
 }
 ```
+
+## Alignment
+- Trong C++ khi căn chỉnh padding 1 thuộc tính trong Struct thì Struct sẽ tự động được căn chỉnh theo "alignas" lớn nhất. Ví dụ
+```c++
+struct Wrapper
+{
+    char header;
+    alignas(64) std::atomic<int64_t> safe_counter;
+    alignas(32) char footer;
+};
+```
+- Như ví dụ trên thì đối tượng "Wrapper" sẽ có địa chỉ bộ nhớ chia hết cho 64. safe_counter sẽ có địa chỉ chia hết cho 64, footer chia hết cho 32. Giữa header và safe_counter có padding 63 byte
