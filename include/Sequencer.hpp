@@ -6,6 +6,7 @@
 #include "Cursored.hpp"
 #include "Sequenced.hpp"
 #include "Sequence.hpp"
+#include "SequenceBarrier.hpp"
 
 namespace disruptor
 {
