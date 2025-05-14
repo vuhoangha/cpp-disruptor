@@ -3,11 +3,10 @@
 #include <atomic>
 #include <string>
 #include <cstdint>
+#include "Common.hpp"
 
 namespace disruptor
 {
-    inline constexpr size_t CACHE_LINE_SIZE = 64;
-
     /**
      * đảm bảo rằng mỗi đối tượng của class này sẽ bắt đầu tại địa chỉ bộ nhớ là bội số của CACHE_LINE_SIZE (64 bytes)
      * khi đó đối tượng này sẽ nằm trong 1 cache line riêng biệt, không bị false sharing
@@ -19,11 +18,11 @@ namespace disruptor
      * Also attempts to be more efficient with regards to false
      * sharing by adding padding around the atomic field.
      */
-    class alignas(CACHE_LINE_SIZE) Sequence
+    class Sequence
     {
     private:
-        // The actual sequence value - căn chỉnh theo cache line
-        std::atomic<int64_t> value;
+        // The actual sequence value - căn chỉnh theo cache line. Chắc chắn nằm 1 mình 1 cache line
+        alignas(CACHE_LINE_SIZE) std::atomic<int64_t> value;
 
         // Padding sau value để đảm bảo không có biến nào của đối tượng khác nằm trên cùng cache line
         char padding[CACHE_LINE_SIZE - sizeof(std::atomic<int64_t>)];

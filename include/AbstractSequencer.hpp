@@ -31,124 +31,138 @@
 #include "DataProvider.hpp"
 #include "Util.hpp"
 
-namespace disruptor {
-
-/**
- * Base class for the various sequencer types (single/multi). Provides
- * common functionality like the management of gating sequences (add/remove) and
- * ownership of the current cursor.
- */
-class AbstractSequencer : public Sequencer {
-protected:
-    const int bufferSize;
-    const std::shared_ptr<WaitStrategy> waitStrategy;
-    Sequence cursor{INITIAL_CURSOR_VALUE};
-    std::vector<std::shared_ptr<Sequence>> gatingSequences;
-
-public:
-    /**
-     * Create with the specified buffer size and wait strategy.
-     *
-     * @param bufferSize   The total number of entries, must be a positive power of 2.
-     * @param waitStrategy The wait strategy used by this sequencer
-     */
-    AbstractSequencer(int bufferSize, std::shared_ptr<WaitStrategy> waitStrategy)
-        : bufferSize(bufferSize), waitStrategy(waitStrategy) {
-        if (bufferSize < 1) {
-            throw std::invalid_argument("bufferSize must not be less than 1");
-        }
-        if (std::popcount(static_cast<unsigned int>(bufferSize)) != 1) {
-            throw std::invalid_argument("bufferSize must be a power of 2");
-        }
-    }
-
-    virtual ~AbstractSequencer() = default;
+namespace disruptor
+{
 
     /**
-     * @see Sequencer#getCursor()
+     * Base class for the various sequencer types (single/multi). Provides
+     * common functionality like the management of gating sequences (add/remove) and
+     * ownership of the current cursor.
      */
-    int64_t getCursor() const override {
-        return cursor.get();
-    }
+    class AbstractSequencer : public Sequencer
+    {
+    protected:
+        Sequence cursor{INITIAL_CURSOR_VALUE};
+        const int bufferSize;
+        const std::shared_ptr<WaitStrategy> waitStrategy;
+        std::vector<std::shared_ptr<Sequence>> gatingSequences;
 
-    /**
-     * @see Sequencer#getBufferSize()
-     */
-    int getBufferSize() const override {
-        return bufferSize;
-    }
-
-    /**
-     * @see Sequencer#addGatingSequences(Sequence...)
-     */
-    void addGatingSequences(const std::vector<std::shared_ptr<Sequence>>& sequences) override {
-        // Lấy giá trị cursor hiện tại
-        int64_t cursorSequence = getCursor();
-        
-        // Dự trữ không gian cho vector
-        gatingSequences.reserve(gatingSequences.size() + sequences.size());
-        
-        // Thiết lập giá trị và thêm các sequence mới
-        for (const auto& sequence : sequences) {
-            sequence->set(cursorSequence);
-            gatingSequences.push_back(sequence);
-        }
-    }
-
-    /**
-     * @see Sequencer#removeGatingSequence(Sequence)
-     */
-    bool removeGatingSequence(const std::shared_ptr<Sequence>& sequence) override {
-        // Kiểm tra xem sequence có tồn tại không
-        auto it = std::find(gatingSequences.begin(), gatingSequences.end(), sequence);
-        if (it == gatingSequences.end()) {
-            return false;
-        }
-        
-        // Xoá tất cả các phiên bản của sequence (nếu có nhiều hơn một)
-        auto newEnd = std::remove(gatingSequences.begin(), gatingSequences.end(), sequence);
-        gatingSequences.erase(newEnd, gatingSequences.end());
-        
-        return true;
-    }
-
-    /**
-     * @see Sequencer#getMinimumSequence()
-     */
-    int64_t getMinimumSequence() const override {
-        return Util::getMinimumSequence(gatingSequences, cursor.get());
-    }
-
-    /**
-     * @see Sequencer#newBarrier(Sequence...)
-     */
-    std::shared_ptr<SequenceBarrier> newBarrier(
-        const std::vector<std::shared_ptr<Sequence>>& sequencesToTrack) override {
-        return std::make_shared<ProcessingSequenceBarrier>(
-            this,
-            waitStrategy,
-            cursor,
-            sequencesToTrack);
-    }
-
-
-    std::string toString() const {
-        std::string result = "AbstractSequencer{waitStrategy=";
-        result += waitStrategy->toString();
-        result += ", cursor=" + cursor.toString();
-        result += ", gatingSequences=[";
-        
-        for (size_t i = 0; i < gatingSequences.size(); ++i) {
-            if (i > 0) {
-                result += ", ";
+    public:
+        /**
+         * Create with the specified buffer size and wait strategy.
+         *
+         * @param bufferSize   The total number of entries, must be a positive power of 2.
+         * @param waitStrategy The wait strategy used by this sequencer
+         */
+        AbstractSequencer(int bufferSize, std::shared_ptr<WaitStrategy> waitStrategy)
+            : bufferSize(bufferSize), waitStrategy(waitStrategy)
+        {
+            if (bufferSize < 1)
+            {
+                throw std::invalid_argument("bufferSize must not be less than 1");
             }
-            result += gatingSequences[i]->toString();
+            if (std::popcount(static_cast<unsigned int>(bufferSize)) != 1)
+            {
+                throw std::invalid_argument("bufferSize must be a power of 2");
+            }
         }
-        result += "]}";
-        
-        return result;
-    }
-};
+
+        virtual ~AbstractSequencer() = default;
+
+        /**
+         * @see Sequencer#getCursor()
+         */
+        int64_t getCursor() const override
+        {
+            return cursor.get();
+        }
+
+        /**
+         * @see Sequencer#getBufferSize()
+         */
+        int getBufferSize() const override
+        {
+            return bufferSize;
+        }
+
+        /**
+         * @see Sequencer#addGatingSequences(Sequence...)
+         */
+        void addGatingSequences(const std::vector<std::shared_ptr<Sequence>> &sequences) override
+        {
+            // Lấy giá trị cursor hiện tại
+            int64_t cursorSequence = getCursor();
+
+            // Dự trữ không gian cho vector
+            gatingSequences.reserve(gatingSequences.size() + sequences.size());
+
+            // Thiết lập giá trị và thêm các sequence mới
+            for (const auto &sequence : sequences)
+            {
+                sequence->set(cursorSequence);
+                gatingSequences.push_back(sequence);
+            }
+        }
+
+        /**
+         * @see Sequencer#removeGatingSequence(Sequence)
+         */
+        bool removeGatingSequence(const std::shared_ptr<Sequence> &sequence) override
+        {
+            // Kiểm tra xem sequence có tồn tại không
+            auto it = std::find(gatingSequences.begin(), gatingSequences.end(), sequence);
+            if (it == gatingSequences.end())
+            {
+                return false;
+            }
+
+            // Xoá tất cả các phiên bản của sequence (nếu có nhiều hơn một)
+            auto newEnd = std::remove(gatingSequences.begin(), gatingSequences.end(), sequence);
+            gatingSequences.erase(newEnd, gatingSequences.end());
+
+            return true;
+        }
+
+        /**
+         * @see Sequencer#getMinimumSequence()
+         */
+        int64_t getMinimumSequence() const override
+        {
+            return Util::getMinimumSequence(gatingSequences, cursor.get());
+        }
+
+        /**
+         * @see Sequencer#newBarrier(Sequence...)
+         */
+        std::shared_ptr<SequenceBarrier> newBarrier(
+            const std::vector<std::shared_ptr<Sequence>> &sequencesToTrack) override
+        {
+            return std::make_shared<ProcessingSequenceBarrier>(
+                this,
+                waitStrategy,
+                cursor,
+                sequencesToTrack);
+        }
+
+        std::string toString() const
+        {
+            std::string result = "AbstractSequencer{waitStrategy=";
+            result += waitStrategy->toString();
+            result += ", cursor=" + cursor.toString();
+            result += ", gatingSequences=[";
+
+            for (size_t i = 0; i < gatingSequences.size(); ++i)
+            {
+                if (i > 0)
+                {
+                    result += ", ";
+                }
+                result += gatingSequences[i]->toString();
+            }
+            result += "]}";
+
+            return result;
+        }
+    };
 
 } // namespace disruptor
- 
