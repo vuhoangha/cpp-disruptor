@@ -37,10 +37,10 @@ namespace disruptor {
 			return true;
 		}
 
-	private:
 		bool sameThread() {
 			return ProducerThreadAssertion::isSameThreadProducingTo(this);
 		}
+
 
 		/**
 		* Only used when assertions are enabled.
