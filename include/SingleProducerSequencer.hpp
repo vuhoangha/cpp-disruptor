@@ -5,6 +5,7 @@
 #include "Util.hpp"
 #include <unordered_map>
 #include "InsufficientCapacityException.hpp"
+#include <cassert>
 
 namespace disruptor {
 	class SingleProducerSequencer : public AbstractSequencer {
@@ -44,12 +45,17 @@ namespace disruptor {
 		}
 
 	public:
-		/**
-		* @see Sequencer#tryNext(int)
-		*/
-		int64_t tryNext(int n) override {
-			if (n < 1) {
-				throw std::invalid_argument("n must be > 0");
+		int64_t tryNext() override {
+			return this->tryNext(1);
+		}
+
+
+		int64_t tryNext(const int n) override {
+			assert(sameThread() && "Accessed by two threads - use ProducerType.MULTI!");
+
+			if (n < 1 || n > bufferSize)
+			{
+				throw std::invalid_argument("n must be > 0 and < bufferSize");
 			}
 
 			if (!hasAvailableCapacity(n)) {
@@ -60,6 +66,68 @@ namespace disruptor {
 
 			return nextSequence;
 		}
+
+
+		int64_t next() override {
+			return this->next(1);
+		}
+
+
+		int64_t next(int n) override {
+			assert(sameThread() && "Accessed by two threads - use ProducerType.MULTI!");
+
+			if (n < 1 || n > bufferSize)
+			{
+				throw std::invalid_argument("n must be > 0 and < bufferSize");
+			}
+
+			int64_t nextValue = this->nextValue;
+			int64_t nextSequence = nextValue + n;
+			int64_t wrapPoint = nextSequence - bufferSize;
+			int64_t cachedGatingSequence = this->cachedValue;
+
+			// logic chi tiết đọc ở hasAvailableCapacity
+			if (cachedGatingSequence < wrapPoint) {
+				// chờ cho tới khi consumer xử lý xong để có chỗ trống ghi dữ liệu
+				int64_t minSequence;
+				while (wrapPoint > (minSequence = Util::getMinimumSequence(gatingSequences, nextValue))) {
+					// TODO: Use waitStrategy to spin?
+					std::this_thread::sleep_for(std::chrono::nanoseconds(1));
+				}
+				this->cachedValue = minSequence;
+			}
+
+			this->nextValue = nextSequence;
+
+			return true;
+		}
+
+
+		int64_t remainingCapacity() const override {
+			long consumed = Util::getMinimumSequence(this->gatingSequences, nextValue);
+			long produced = this->nextValue;
+			return this->bufferSize - (produced - consumed);
+		}
+
+
+		void claim(const int64_t sequence) override {
+			this->nextValue = sequence;
+		}
+
+
+		void publish(const int64_t sequence) override {
+			this->cursor.set(sequence);
+			this->waitStrategy->signalAllWhenBlocking();
+		}
+
+
+		void publish(const int64_t lo, const int64_t hi) override {
+			this->publish(hi);
+		}
+
+
+		đang làm dở tới hàm isAvailable. Mai xem ý nghĩa hàm này làm gì thế
+
 
 		/**
 		* Only used when assertions are enabled.
