@@ -4,59 +4,49 @@
 #include <cstdint>
 #include <thread>
 #include <chrono>
+#include <condition_variable>
 #include <mutex>
 #include "Sequence.hpp"
 
-namespace disruptor
-{
-    class Util
-    {
+namespace disruptor {
+    class Util {
     public:
         static constexpr int ONE_MILLISECOND_IN_NANOSECONDS = 1'000'000;
 
-        static int ceilingNextPowerOfTwo(int x)
-        {
+        static int ceilingNextPowerOfTwo(int x) {
             return 1 << (32 - __builtin_clz(x - 1));
         }
 
-        static int64_t getMinimumSequence(const std::vector<std::shared_ptr<Sequence>> &sequences, int64_t minimum = INT64_MAX)
-        {
+        static int64_t getMinimumSequence(const std::vector<std::shared_ptr<Sequence> > &sequences, int64_t minimum = INT64_MAX) {
             int64_t minimumSequence = minimum;
-            for (const auto &sequence : sequences)
-            {
+            for (const auto &sequence: sequences) {
                 int64_t value = sequence->get();
                 minimumSequence = std::min(minimumSequence, value);
             }
             return minimumSequence;
         }
 
-        static std::vector<Sequence> getSequencesFor(const std::vector<EventProcessor> &processors)
-        {
+        static std::vector<Sequence> getSequencesFor(const std::vector<EventProcessor> &processors) {
             std::vector<Sequence> sequences;
-            for (const auto &processor : processors)
-            {
+            for (const auto &processor: processors) {
                 sequences.push_back(processor.getSequence());
             }
             return sequences;
         }
 
-        static int log2(int value)
-        {
-            if (value < 1)
-            {
+        static int log2(int value) {
+            if (value < 1) {
                 throw std::invalid_argument("value must be a positive number");
             }
             return 31 - __builtin_clz(value);
         }
 
-        static int64_t awaitNanos(std::mutex &mutex, int64_t timeoutNanos)
-        {
+        static int64_t awaitNanos(std::mutex &mutex, int64_t timeoutNanos) {
             std::unique_lock<std::mutex> lock(mutex);
             auto start = std::chrono::steady_clock::now();
             auto duration = std::chrono::nanoseconds(timeoutNanos);
             std::cv_status status = std::cv_status::no_timeout;
-            if (duration.count() > 0)
-            {
+            if (duration.count() > 0) {
                 status = std::cv_status::timeout;
                 std::this_thread::sleep_for(duration);
             }
@@ -64,8 +54,7 @@ namespace disruptor
             return std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
         }
 
-        static int get_cache_line_size()
-        {
+        static int get_cache_line_size() {
 #if defined(__cpp_lib_hardware_interference_size) && defined(__has_include)
 #if __has_include(<new>)
 #include <new>
@@ -75,7 +64,7 @@ namespace disruptor
 #endif
 #endif
 
-// Fallback values for common architectures
+            // Fallback values for common architectures
 #if defined(__x86_64__) || defined(_M_X64) || defined(__i386) || defined(_M_IX86)
             return 64; // x86 & x86_64 usually have 64-byte cache lines
 #elif defined(__arm__) || defined(__aarch64__) || defined(_M_ARM) || defined(_M_ARM64)

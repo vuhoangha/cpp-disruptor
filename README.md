@@ -154,8 +154,10 @@ void consumer() {
 
 #### memory_order_acquire
 - đảm bảo tính atomic của thao tác.
-- sử dụng với thao tác đọc (load).
-- Đảm bảo rằng mọi thao tác sau thao tác này không bị đưa lên trước nó.
+- Sử dụng với thao tác đọc (load).
+- Đảm bảo rằng mọi thao tác đọc/ghi sau lệnh này không bị đưa lên trên nó.
+- Nhưng các thao tác đọc/ghi phía trước lệnh hiện tại vẫn có thể bị đẩy xuống phía sau.
+- Nó chỉ ngăn chặn 1 chiều từ sau ra trước
 - Example:
 ```C++
 #include <atomic>
@@ -198,7 +200,9 @@ int main() {
 #### memory_order_release
 - đảm bảo tính atomic của thao tác.
 - Sử dụng với thao tác ghi (store).
-- Đảm bảo rằng mọi thao tác trước thao tác này không bị đưa xuống sau nó.
+- Đảm bảo rằng mọi thao tác đọc/ghi trước lệnh này không bị đưa xuống sau nó.
+- Nhưng các thao tác đọc/ghi phía sau lệnh hiện tại vẫn có thể bị đẩy lên trước.
+- Nó chỉ ngăn chặn 1 chiều từ trước ra sau
 - Example:
 ```C++
 #include <atomic>
@@ -241,7 +245,8 @@ int main() {
 #### memory_order_acq_rel
 - đảm bảo tính atomic của thao tác.
 - kết hợp của acquire và release.
-- đảm bảo thao tác trước thao tác này sẽ ko bị đưa về sau, thao tác sau ko bị đưa lên trước
+- đảm bảo thao tác đọc/ghi trước thao tác này sẽ ko bị đưa về sau, thao tác đọc/ghi sau ko bị đưa lên trước
+- nếu sử dụng acquire và release kết hợp thì có thế có trường hợp lệnh nằm giữa 2 lệnh này. memory_order_acq_rel sẽ ko xảy ra trường hợp ấy
 - Example:
 ```C++
 #include <atomic>
@@ -309,115 +314,10 @@ int main() {
 
 #### memory_order_seq_cst
 - đảm bảo tính atomic của thao tác.
-- memory_order_acquire đảm bảo các lệnh phía sau không được thực thi trước nhưng memory_order_acquire lại chỉ áp dụng nếu thao tác hiện tại là đọc (load)
-Ví dụ:
-```C++
-// lỗi vì memory_order_acquire chỉ áp dụng với thao tác load
-data_ready.store(true, std::memory_order_acquire);
-std::cout << "Dữ liệu nhận được: " << shared_data << std::endl;
-```
-- memory_order_release đảm bảo các lệnh phía trước không được thực thi sau nhưng memory_order_release lại chỉ áp dụng nếu thao tác hiện tại là ghi (store).
-Ví dụ:
-```C++
-// lỗi vì memory_order_release chỉ áp dụng với thao tác store
-std::cout << "Dữ liệu nhận được: " << shared_data << std::endl;
-while (!data_ready.load(std::memory_order_release)) {
-}
-```
-- các memory order trên đều chỉ áp dụng với riêng vị trí biến đó đứng, còn các dòng code phía trước hoặc phía sau có thể tự nó bị xáo trộn.
-Ví dụ:
-```C++
-// B,C chắc chắn thực thi sau A nhưng C có thể thực thi trước B
-A.load(std::memory_order_acquire);
-B.load(std::memory_order_relaxed);
-C.load(std::memory_order_relaxed);
-
-// B,C chắc chắn thực thi trước A nhưng C có thể thực thi trước B
-B.load(std::memory_order_relaxed);
-C.load(std::memory_order_relaxed);
-A.store(std::memory_order_release);
-```
-- với memory_order_seq_cst thì thứ tự thực thi của các dòng code sẽ luôn cố định thay vì chỉ cục bộ theo từng biến, từng dòng.
-Ví dụ:
-```C++
-// chắc chắn sẽ thực thi theo thứ tự A --> B --> C
-A.load(std::memory_order_seq_cst);
-B.load(std::memory_order_seq_cst);
-C.load(std::memory_order_seq_cst);
-```
-- Dưới đây là 1 ví dụ mà rất cần phải có "memory_order_seq_cst", nếu ko thread C có nguy cơ chạy vĩnh viễn:
-```C++
-#include <atomic>
-#include <thread>
-#include <iostream>
-#include <vector>
-
-// Ba biến atomic
-std::atomic<int> token{0};
-std::atomic<bool> data_ready_A{false};
-std::atomic<bool> data_ready_B{false};
-
-// Dữ liệu chung
-std::vector<int> shared_data;
-
-void thread_A() {
-    // Thread A chuẩn bị dữ liệu
-    shared_data.push_back(1);
-    shared_data.push_back(2);
-    
-    // Đánh dấu dữ liệu A đã sẵn sàng
-    data_ready_A.store(true, std::memory_order_seq_cst);
-    
-    // Kiểm tra xem dữ liệu B đã sẵn sàng chưa
-    if (data_ready_B.load(std::memory_order_seq_cst)) {
-        // Nếu B đã sẵn sàng, lấy token trước
-        token.store(1, std::memory_order_seq_cst);
-    }
-}
-
-void thread_B() {
-    // Thread B chuẩn bị dữ liệu
-    shared_data.push_back(3);
-    shared_data.push_back(4);
-    
-    // Đánh dấu dữ liệu B đã sẵn sàng
-    data_ready_B.store(true, std::memory_order_seq_cst);
-    
-    // Kiểm tra xem dữ liệu A đã sẵn sàng chưa
-    if (data_ready_A.load(std::memory_order_seq_cst)) {
-        // Nếu A đã sẵn sàng, lấy token trước
-        token.store(2, std::memory_order_seq_cst);
-    }
-}
-
-void thread_C() {
-    // Đợi cho đến khi token được đặt (1 hoặc 2)
-    while (token.load(std::memory_order_seq_cst) == 0) {
-        std::this_thread::yield();
-    }
-    
-    // Xử lý dữ liệu theo thứ tự dựa vào token
-    if (token.load(std::memory_order_seq_cst) == 1) {
-        std::cout << "Thread A đã lấy token trước, xử lý dữ liệu theo trình tự A->B" << std::endl;
-        // Xử lý dữ liệu theo thứ tự A rồi đến B
-    } else {
-        std::cout << "Thread B đã lấy token trước, xử lý dữ liệu theo trình tự B->A" << std::endl;
-        // Xử lý dữ liệu theo thứ tự B rồi đến A
-    }
-}
-
-int main() {
-    std::thread tA(thread_A);
-    std::thread tB(thread_B);
-    std::thread tC(thread_C);
-    
-    tA.join();
-    tB.join();
-    tC.join();
-    
-    return 0;
-}
-```
+- hình dung mọi lệnh atomic có seq_cst của mọi luồng đặt thẳng lên một dòng thời gian duy nhất, từng lệnh một theo đúng thứ tự thực tế mà các luồng thấy.
+- các thread sẽ thấy cùng 1 thứ tự thao tác nên giá trị sẽ giống nhau
+- nhưng nếu store bằng seq_cst, load bằng relax thì sẽ ko chắc chắn nhìn thấy dữ liệu mới. Tôi thiểu load phải là acquire
+- nếu chỉ là acq_rel thì mặc dù x cập nhật trước y nhưng 2 thread khác nhau sẽ nhìn thấy thứ tự khác. 1 thread sẽ thấy y mới x cũ, thread khác sẽ thấy y cũ x mới
 
 ## Alignment
 - Trong C++ khi căn chỉnh padding 1 thuộc tính trong Struct thì Struct sẽ tự động được căn chỉnh theo "alignas" lớn nhất. Ví dụ
