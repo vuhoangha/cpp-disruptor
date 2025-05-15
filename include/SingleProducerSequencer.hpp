@@ -3,6 +3,8 @@
 #include "AbstractSequencer.hpp"
 #include "Common.hpp"
 #include "Util.hpp"
+#include <unordered_map>
+#include "InsufficientCapacityException.hpp"
 
 namespace disruptor {
 	class SingleProducerSequencer : public AbstractSequencer {
@@ -41,6 +43,23 @@ namespace disruptor {
 			return ProducerThreadAssertion::isSameThreadProducingTo(this);
 		}
 
+	public:
+		/**
+		* @see Sequencer#tryNext(int)
+		*/
+		int64_t tryNext(int n) override {
+			if (n < 1) {
+				throw std::invalid_argument("n must be > 0");
+			}
+
+			if (!hasAvailableCapacity(n)) {
+				throw InsufficientCapacityException();
+			}
+
+			int64_t nextSequence = this->nextValue += n;
+
+			return nextSequence;
+		}
 
 		/**
 		* Only used when assertions are enabled.
