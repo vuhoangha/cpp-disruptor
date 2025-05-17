@@ -138,6 +138,8 @@ namespace disruptor
         {
             return std::to_string(get());
         }
+
+        friend std::ostream& operator<<(std::ostream& os, const Sequence& sequence);
     };
 
 } // namespace disruptor

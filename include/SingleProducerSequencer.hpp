@@ -126,7 +126,17 @@ namespace disruptor {
 		}
 
 
-		đang làm dở tới hàm isAvailable. Mai xem ý nghĩa hàm này làm gì thế
+		bool isAvailable(const int64_t sequence) const override {
+			int64_t currentSequence = this->cursor.get();
+			return sequence <= currentSequence && sequence > currentSequence - bufferSize;
+		}
+
+
+		// trong các sequence barrier thì thường "nextSequence" là sequence mà barrier đang chờ, availableSequence là sequence đã được publish hoặc các dependency consmer xử lý xong
+		// trong hàm waitFor của SequenceBarrier thì nextSequence <= availableSequence thì mới gọi tới đây
+		int64_t getHighestPublishedSequence(int64_t nextSequence, int64_t availableSequence) const override {
+			return availableSequence;
+		}
 
 
 		/**
@@ -155,5 +165,30 @@ namespace disruptor {
 			}
 		};
 
+
+		friend std::ostream& operator<<(std::ostream& os, const SingleProducerSequencer& sequencer);
+
+
 	};
+
+
+	std::ostream& operator<<(std::ostream& os, const SingleProducerSequencer& sequencer) {
+		os << "SingleProducerSequencer{"
+			<< "bufferSize=" << sequencer.bufferSize
+			<< ", waitStrategy=" << sequencer.waitStrategy->toString()
+			<< ", cursor=" << sequencer.cursor
+			<< ", gatingSequences=[";
+
+		for (size_t i = 0; i < sequencer.gatingSequences.size(); ++i) {
+			if (i > 0) {
+				os << ", ";
+			}
+			os << sequencer.gatingSequences[i];
+		}
+		os << "]}";
+
+		return os;
+	}
+
+
 }
