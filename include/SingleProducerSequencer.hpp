@@ -22,8 +22,8 @@ namespace disruptor {
 
 		// kiểm tra xem 1 vị trí trong RingBuffer đã được các consumer xử lý xong chưa để publisher ghi dữ liệu vào
 		bool hasAvailableCapacity(const int requiredCapacity) {
-			int64_t nextValue = this->nextValue;
-			int64_t wrapPoint = nextValue + requiredCapacity - bufferSize;
+			int64_t localNextValue = this->nextValue;
+			int64_t wrapPoint = localNextValue + requiredCapacity - bufferSize;
 			int64_t cachedGatingSequence = this->cachedValue;
 
 			// wrapPoint: chính là vị trí lớn nhất sẽ được publisher lấy nhưng tua lại 1 vòng
@@ -32,7 +32,7 @@ namespace disruptor {
 			// https://github.com/LMAX-Exchange/disruptor/issues/291
 			// https://github.com/LMAX-Exchange/disruptor/issues/280
 			if (cachedGatingSequence < wrapPoint) {
-				int64_t minSequence = Util::getMinimumSequence(gatingSequences, nextValue); // truyền vào nextValue vì nó là sequence lớn nhất, sequence consumer xử lý sẽ <= nextValue
+				int64_t minSequence = Util::getMinimumSequence(gatingSequences, localNextValue); // truyền vào localNextValue vì nó là sequence lớn nhất, sequence consumer xử lý sẽ <= nextValue
 				if (minSequence < wrapPoint) {
 					return false;
 				}
@@ -81,8 +81,8 @@ namespace disruptor {
 				throw std::invalid_argument("n must be > 0 and < bufferSize");
 			}
 
-			int64_t nextValue = this->nextValue;
-			int64_t nextSequence = nextValue + n;
+			int64_t localNextValue = this->nextValue;
+			int64_t nextSequence = localNextValue + n;
 			int64_t wrapPoint = nextSequence - bufferSize;
 			int64_t cachedGatingSequence = this->cachedValue;
 
@@ -90,7 +90,7 @@ namespace disruptor {
 			if (cachedGatingSequence < wrapPoint) {
 				// chờ cho tới khi consumer xử lý xong để có chỗ trống ghi dữ liệu
 				int64_t minSequence;
-				while (wrapPoint > (minSequence = Util::getMinimumSequence(gatingSequences, nextValue))) {
+				while (wrapPoint > (minSequence = Util::getMinimumSequence(gatingSequences, localNextValue))) {
 					// TODO: Use waitStrategy to spin?
 					std::this_thread::sleep_for(std::chrono::nanoseconds(1));
 				}
