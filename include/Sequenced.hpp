@@ -30,7 +30,7 @@ namespace disruptor
          * @param requiredCapacity trong buffer
          * @return true nếu buffer có khả năng cấp phát "requiredCapacity" vị trí trống tiếp theo, ngược lại false.
          */
-        virtual bool hasAvailableCapacity(int requiredCapacity) const = 0;
+        virtual bool hasAvailableCapacity(const int requiredCapacity) const = 0;
 
         /**
          * Get the remaining capacity for this sequencer.

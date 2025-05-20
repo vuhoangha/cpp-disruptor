@@ -21,19 +21,17 @@ namespace disruptor {
 		char padding[CACHE_LINE_SIZE - sizeof(std::atomic<int64_t>) * 2];
 
 		// kiểm tra xem 1 vị trí trong RingBuffer đã được các consumer xử lý xong chưa để publisher ghi dữ liệu vào
-		bool hasAvailableCapacity(const int requiredCapacity) {
-			int64_t localNextValue = this->nextValue;
-			int64_t wrapPoint = localNextValue + requiredCapacity - bufferSize;
-			int64_t cachedGatingSequence = this->cachedValue;
+		bool hasAvailableCapacity(const int requiredCapacity) const override {
+			const int64_t localNextValue = this->nextValue;
+			const int64_t wrapPoint = localNextValue + requiredCapacity - bufferSize;
 
 			// wrapPoint: chính là vị trí lớn nhất sẽ được publisher lấy nhưng tua lại 1 vòng
 			//              Khi các consumer chưa xử lý xong vị trí wrapPoint này thì đồng nghĩa ko thể ghi đè dữ liệu vào đươc
 			// dưới đây tôi có bỏ bớt logic so với mã nguồn vì các case họ cover cho tính năng thì tôi ko support tính năng ấy
 			// https://github.com/LMAX-Exchange/disruptor/issues/291
 			// https://github.com/LMAX-Exchange/disruptor/issues/280
-			if (cachedGatingSequence < wrapPoint) {
-				int64_t minSequence = Util::getMinimumSequence(gatingSequences, localNextValue); // truyền vào localNextValue vì nó là sequence lớn nhất, sequence consumer xử lý sẽ <= nextValue
-				if (minSequence < wrapPoint) {
+			if (const int64_t cachedGatingSequence = this->cachedValue; cachedGatingSequence < wrapPoint) {
+				if (const int64_t minSequence = Util::getMinimumSequence(gatingSequences, localNextValue); minSequence < wrapPoint) {
 					return false;
 				}
 			}
@@ -73,7 +71,7 @@ namespace disruptor {
 		}
 
 
-		int64_t next(int n) override {
+		int64_t next(const int n) override {
 			assert(sameThread() && "Accessed by two threads - use ProducerType.MULTI!");
 
 			if (n < 1 || n > bufferSize)
