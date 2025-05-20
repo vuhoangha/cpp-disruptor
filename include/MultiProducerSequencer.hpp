@@ -9,7 +9,6 @@
 namespace disruptor {
     template<size_t N>
     class MultiProducerSequencer : public AbstractSequencer {
-    private:
         // seq nhỏ nhất đã được các gatingSequences xử lý
         alignas(CACHE_LINE_SIZE) Sequence cachedValue{Sequence::INITIAL_VALUE};
 
@@ -24,8 +23,8 @@ namespace disruptor {
         alignas(CACHE_LINE_SIZE) std::array<Sequence, N> availableBuffer;
 
     public:
-        MultiProducerSequencer(const int bufferSize, std::shared_ptr<WaitStrategy> waitStrategy)
-            : AbstractSequencer(bufferSize, waitStrategy), indexMask(bufferSize - 1), indexShift(Util::log2(bufferSize)) {
+        MultiProducerSequencer(const int bufferSize, const std::shared_ptr<WaitStrategy> &waitStrategy)
+            : AbstractSequencer(bufferSize, waitStrategy), indexMask(bufferSize - 1), indexShift(Util::log2(bufferSize)), padding{} {
             for (auto &seq: availableBuffer) {
                 seq.set(-1);
             }
@@ -35,8 +34,9 @@ namespace disruptor {
         bool hasAvailableCapacity(const int requiredCapacity) const override {
             const int64_t lastClaimedSequence = this->cursor.getRelax();
             const int64_t wrapPoint = lastClaimedSequence + requiredCapacity - this->bufferSize;
+            const int64_t cachedGatingSequence = this->cachedValue.getRelax();
 
-            if (const int64_t cachedGatingSequence = this->cachedValue.getRelax(); cachedGatingSequence < wrapPoint) {
+            if (cachedGatingSequence < wrapPoint) {
                 const int64_t minSequence = Util::getMinimumSequence(this->gatingSequences, cachedGatingSequence);
                 this->cachedValue.setRelax(minSequence);
 
@@ -67,8 +67,9 @@ namespace disruptor {
             const int64_t currentSequence = this->cursor.getAndAddRelax(n);
             const int64_t nextSequence = currentSequence + n;
             const int64_t wrapPoint = nextSequence - this->bufferSize;
+            const int64_t cachedGatingSequence = this->cachedValue.getRelax();
 
-            if (const int64_t cachedGatingSequence = this->cachedValue.getRelax(); cachedGatingSequence < wrapPoint) {
+            if (cachedGatingSequence < wrapPoint) {
                 int64_t gatingSequence;
                 while ((gatingSequence = Util::getMinimumSequence(this->gatingSequences, cachedGatingSequence)) < wrapPoint) {
                     // TODO: Use waitStrategy to spin?
@@ -80,7 +81,9 @@ namespace disruptor {
             return nextSequence;
         }
 
-        tiếp tục các hàm try_next
+
+        đang dở hàm tryNext
+
 
     };
 }
