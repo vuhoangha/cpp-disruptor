@@ -103,6 +103,28 @@ int c = a + b;
 - Mỗi core CPU có cache riêng, và chúng phải đồng bộ với nhau qua các giao thức phức tạp. Từ đó dẫn tới việc các thread chạy trên các core khác nhau có thể không nhìn thấy giá trị mới nhất của biến.
 - Theo thông thường thì mặc định sẽ là memory_order_seq_cst nhưng nó là loại tốn CPU nhất, nên cần có các loại khác để tối ưu hơn.
 
+#### Lưu ý về việc CPU tự sắp xếp lại câu lệnh
+- Việc sắp xếp lại các câu lệnh chỉ khi chúng ko có ràng buộc với nhau. Khi có ràng buộc, CPU/Compiler vẫn phải đảm bảo tính đúng đắn của code
+- Ví dụ về việc ko bị reorder
+```c++
+std::atomic<int> x{0};
+int result = x.load(std::memory_order_relaxed); // Dòng 1
+if (result > 10) {                             // Dòng 2
+    // Xử lý...
+}
+```
+- Ví dụ về việc có thể bị reorder
+```c++
+std::atomic<int> x{0};
+std::atomic<int> y{0};
+
+y.store(5, std::memory_order_relaxed);         // Có thể bị đẩy xuống dưới vì ko liên quan biến "x"
+int result = x.load(std::memory_order_relaxed);
+if (result > 10) {
+    // Xử lý...
+}
+```
+
 #### memory_order_relaxed
 - đảm bảo tính atomic của thao tác.
 - không ngăn cản việc sắp xếp lại các thao tác trước hoặc sau nó.
