@@ -82,8 +82,63 @@ namespace disruptor {
         }
 
 
-        đang dở hàm tryNext
+        int64_t remainingCapacity() const override {
+            const int64_t currentSequence = this->cursor.getRelax();
+            const int64_t consumed = Util::getMinimumSequence(this->gatingSequences, currentSequence);
+            const int64_t produced = currentSequence;
+            return getBufferSize() - (produced - consumed);
+        }
 
 
+        void publish(const int64_t sequence) override {
+            this->setAvailable(sequence);
+            this->waitStrategy->signalAllWhenBlocking();
+        }
+
+
+        void publish(const int64_t low, const int64_t high) override {
+            for (int64_t i = low; i <= high; ++i) {
+                this->setAvailable(i);
+            }
+            this->waitStrategy->signalAllWhenBlocking();
+        }
+
+
+        void setAvailable(const int64_t sequence) {
+            const int32_t index = calculateIndex(sequence);
+            const int64_t flag = calculateAvailabilityFlag(sequence);
+            availableBuffer[index].store(flag, std::memory_order_release);
+        }
+
+
+        int64_t calculateAvailabilityFlag(const int64_t sequence) const {
+            return sequence >> indexShift;
+        }
+
+
+        int32_t calculateIndex(const int64_t sequence) const {
+            return static_cast<int>(sequence) & indexMask;
+        }
+
+
+        bool isAvailable(const int64_t sequence) const override {
+            const int32_t index = calculateIndex(sequence);
+            const int64_t flag = calculateAvailabilityFlag(sequence);
+            return availableBuffer[index].load(std::memory_order_acquire) == flag;
+        }
+
+
+        /**
+         * lấy sequence cao nhất đã được publish để consumer xử lý
+         * vì trong môi trường multi producer thì có thể sequence 10 đã được producer A publish còn sequence 9 do producer B đảm nhiệm vẫn đang xử lý
+         */
+        int64_t getHighestPublishedSequence(const int64_t lowerBound, const int64_t availableSequence) const override {
+            for (int64_t sequence = lowerBound; sequence <= availableSequence; ++sequence) {
+                if (!isAvailable(sequence)) {
+                    return sequence - 1;
+                }
+            }
+            return availableSequence;
+        }
     };
 }

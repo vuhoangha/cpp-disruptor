@@ -40,7 +40,7 @@ namespace disruptor {
         }
 
 
-        static int log2(int value) {
+        static int log2(const int value) {
             if (value < 1) {
                 throw std::invalid_argument("value must be a positive number");
             }
