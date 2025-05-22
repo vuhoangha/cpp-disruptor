@@ -2,7 +2,6 @@
 
 #include <atomic>
 #include <string>
-#include <cstdint>
 #include "Common.hpp"
 
 namespace disruptor {
@@ -18,7 +17,6 @@ namespace disruptor {
      * sharing by adding padding around the atomic field.
      */
     class Sequence {
-    private:
         // The actual sequence value - căn chỉnh theo cache line. Chắc chắn nằm 1 mình 1 cache line
         alignas(CACHE_LINE_SIZE) std::atomic<int64_t> value;
 
@@ -27,6 +25,8 @@ namespace disruptor {
 
     public:
         static constexpr int64_t INITIAL_VALUE = -1L;
+
+        virtual ~Sequence() = default;
 
         /**
          * Create a sequence initialised to -1.
@@ -39,7 +39,7 @@ namespace disruptor {
          *
          * @param initialValue The initial value for this sequence.
          */
-        inline explicit Sequence(int64_t initialValue) {
+        inline explicit Sequence(const int64_t initialValue) {
             // Use release semantics to ensure all previous writes are visible
             value.store(initialValue, std::memory_order_release);
         }

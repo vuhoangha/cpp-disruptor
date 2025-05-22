@@ -4,12 +4,28 @@
 
 namespace disruptor {
     template<typename T>
-    class BatchEventProcessor : public EventProcessor {
-        Sequence sequence = new Sequence(Sequence::INITIAL_VALUE);
+    class BatchEventProcessor final : public EventProcessor {
+        Sequence sequence;
+        bool running = false;
 
     public:
-        Sequence getSequence() const override {
+        Sequence &getSequence() const override {
             return this->sequence;
+        }
+
+        void halt() override {
+            running = false;
+        }
+
+        bool isRunning() const override {
+            return running;
+        }
+
+        void run() {
+            running = true;
+            this-
+
+                chỗ này dùng sequence barrier clear alert
         }
     };
 }

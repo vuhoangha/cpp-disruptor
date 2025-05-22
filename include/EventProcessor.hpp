@@ -7,7 +7,7 @@ namespace disruptor {
         virtual ~EventProcessor() = default;
 
         // lấy sequence gần nhất đã xử lý
-        virtual Sequence getSequence() const = 0;
+        virtual const Sequence& getSequence() const = 0;
 
 
         /**
