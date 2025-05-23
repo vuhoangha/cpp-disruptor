@@ -87,7 +87,7 @@ Khi thread A trên core 1 cập nhật biến x, và thread B trên core 2 cần
     - Core 1 cung cấp dữ liệu cho core 2 (cache-to-cache transfer)
     - Cả hai core bây giờ đều có x trong trạng thái "Shared"
 
-## Order Memory
+## [Order Memory](https://en.cppreference.com/w/cpp/atomic/memory_order)
 Nguyên nhân:
 - CPU có thể thực thi các lệnh không theo thứ tự trong mã nguồn để tối ưu hiệu suất. Ví dụ:
 ```C++

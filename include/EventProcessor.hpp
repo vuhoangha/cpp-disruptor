@@ -15,12 +15,5 @@ namespace disruptor {
          * It will call {@link SequenceBarrier#alert()} to notify the thread to check status.
          */
         virtual void halt() = 0;
-
-
-        /**
-         * @return whether this event processor is running or not
-         * Implementations should ideally return false only when the associated thread is idle.
-         */
-        virtual bool isRunning() const = 0;
     };
 }

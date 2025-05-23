@@ -20,6 +20,6 @@ namespace disruptor
          * @param sequence The sequence at which to find the data
          * @return the data item located at that sequence
          */
-        [[nodiscard]] virtual T get(int64_t sequence) = 0;
+        [[nodiscard]] virtual T& get(int64_t sequence) = 0;
     };
 }

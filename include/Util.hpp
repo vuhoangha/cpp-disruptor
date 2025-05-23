@@ -9,6 +9,7 @@
 #include <condition_variable>
 #include <mutex>
 #include "Sequence.hpp"
+#include "EventProcessor.hpp"
 
 namespace disruptor {
     class Util {
@@ -24,7 +25,7 @@ namespace disruptor {
         static int64_t getMinimumSequence(const std::vector<std::shared_ptr<Sequence> > &sequences, int64_t minimum = INT64_MAX) {
             int64_t minimumSequence = minimum;
             for (const auto &sequence: sequences) {
-                int64_t value = sequence->getRelax();
+                int64_t value = sequence->get();
                 minimumSequence = std::min(minimumSequence, value);
             }
             return minimumSequence;

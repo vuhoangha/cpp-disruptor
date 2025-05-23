@@ -12,18 +12,21 @@ namespace disruptor {
         // seq nhỏ nhất đã được các gatingSequences xử lý
         alignas(CACHE_LINE_SIZE) Sequence cachedValue{Sequence::INITIAL_VALUE};
 
+        alignas(CACHE_LINE_SIZE) const char padding1[CACHE_LINE_SIZE];
         // chính là buffer_size - 1. Dùng để tính toán vị trí trong ring buffer tương tự phép chía lấy dư
-        alignas(CACHE_LINE_SIZE) const int32_t indexMask;
+        const int32_t indexMask;
         // dùng để tính xem sequence hiện tại đã quay được bao nhiêu vòng bằng dịch phải indexShift bit. Ví dụ ring_buffer = 16 thì indexShift = 4 --> sequence=89 --> 89>>5=5 --> sequence này đã quay được 5 vòng
         const int32_t indexShift;
-        char padding[CACHE_LINE_SIZE - sizeof(std::atomic<int32_t>) * 2];
+        const char padding2[CACHE_LINE_SIZE - sizeof(std::atomic<int32_t>) * 2];
+        const char padding3[CACHE_LINE_SIZE];
 
         // mảng chứa số vòng quay của từng vị trí trong RingBuffer. Nó sẽ báo hiệu sequence này được publish hay chưa
         // vì cần tính chất atomic + memory barriers nên Sequence hoàn toàn đáp ứng
-        alignas(CACHE_LINE_SIZE) std::array<Sequence, N> availableBuffer;
+        std::array<Sequence, N> availableBuffer;
+        char padding4[CACHE_LINE_SIZE * 2];
 
     public:
-        MultiProducerSequencer(const int bufferSize, const std::shared_ptr<WaitStrategy> &waitStrategy)
+        explicit MultiProducerSequencer(const int bufferSize, const std::shared_ptr<WaitStrategy> &waitStrategy)
             : AbstractSequencer(bufferSize, waitStrategy), indexMask(bufferSize - 1), indexShift(Util::log2(bufferSize)), padding{} {
             for (auto &seq: availableBuffer) {
                 seq.set(-1);

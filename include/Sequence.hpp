@@ -17,11 +17,10 @@ namespace disruptor {
      * sharing by adding padding around the atomic field.
      */
     class Sequence {
-        // The actual sequence value - căn chỉnh theo cache line. Chắc chắn nằm 1 mình 1 cache line
-        alignas(CACHE_LINE_SIZE) std::atomic<int64_t> value;
-
-        // Padding sau value để đảm bảo không có biến nào của đối tượng khác nằm trên cùng cache line
-        char padding[CACHE_LINE_SIZE - sizeof(std::atomic<int64_t>)];
+        alignas(CACHE_LINE_SIZE) const char padding1[CACHE_LINE_SIZE];
+        std::atomic<int64_t> value;
+        const char padding2[CACHE_LINE_SIZE - sizeof(std::atomic<int64_t>)];
+        const char padding3[CACHE_LINE_SIZE];
 
     public:
         static constexpr int64_t INITIAL_VALUE = -1L;

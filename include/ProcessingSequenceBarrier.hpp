@@ -25,19 +25,16 @@
 #include "FixedSequenceGroup.hpp"
 #include "AlertException.hpp"
 
-namespace disruptor
-{
-
+namespace disruptor {
     /**
      * SequenceBarrier handed out for gating EventProcessors on a cursor sequence and optional dependent EventProcessor(s),
      * using the given WaitStrategy.
      */
-    class ProcessingSequenceBarrier : public SequenceBarrier
-    {
+    class ProcessingSequenceBarrier : public SequenceBarrier {
     private:
         WaitStrategy &waitStrategy;
         Sequence &dependentSequence;
-        std::atomic<bool> alerted;
+        bool alerted;
         Sequence &cursorSequence;
         Sequencer &sequencer;
         std::unique_ptr<FixedSequenceGroup> ownedSequenceGroup; // biến này để chứa lại object FixedSequenceGroup được tạo ra, tránh nó bị destructor làm lỗi biến "dependentSequence"
@@ -47,7 +44,7 @@ namespace disruptor
             Sequencer &sequencer,
             WaitStrategy &waitStrategy,
             Sequence &cursorSequence,
-            const std::vector<std::shared_ptr<Sequence>> &dependentSequences)
+            const std::vector<std::shared_ptr<Sequence> > &dependentSequences)
             : waitStrategy(waitStrategy),
               alerted(false),
               cursorSequence(cursorSequence),
@@ -55,51 +52,41 @@ namespace disruptor
               // Khởi tạo ownedSequenceGroup trước
               ownedSequenceGroup(dependentSequences.empty() ? nullptr : std::make_unique<FixedSequenceGroup>(dependentSequences)),
               // Sau đó khởi tạo dependentSequence để tham chiếu đến đối tượng thích hợp
-              dependentSequence(dependentSequences.empty() ? cursorSequence : static_cast<Sequence &>(*ownedSequenceGroup))
-        {
+              dependentSequence(dependentSequences.empty() ? cursorSequence : static_cast<Sequence &>(*ownedSequenceGroup)) {
         }
 
-        int64_t waitFor(int64_t sequence) override
-        {
+        int64_t waitFor(int64_t sequence) override {
             checkAlert();
             int64_t availableSequence = waitStrategy.waitFor(sequence, cursorSequence, dependentSequence, *this);
 
-            if (availableSequence < sequence)
-            {
+            if (availableSequence < sequence) {
                 return availableSequence;
             }
 
             return sequencer.getHighestPublishedSequence(sequence, availableSequence);
         }
 
-        int64_t getCursor() const override
-        {
+        int64_t getCursor() const override {
             return dependentSequence.get();
         }
 
-        bool isAlerted() const override
-        {
-            return alerted.load(std::memory_order_acquire);
+        bool isAlerted() const override {
+            return alerted;
         }
 
-        void alert() override
-        {
-            alerted.store(true, std::memory_order_release);
+        void alert() override {
+            alerted = true;
             waitStrategy.signalAllWhenBlocking();
         }
 
-        void clearAlert() override
-        {
-            alerted.store(false, std::memory_order_release);
+        void clearAlert() override {
+            alerted = false;
         }
 
-        void checkAlert() const override
-        {
-            if (alerted.load(std::memory_order_acquire))
-            {
+        void checkAlert() const override {
+            if (alerted) {
                 throw AlertException();
             }
         }
     };
-
 } // namespace disruptor
