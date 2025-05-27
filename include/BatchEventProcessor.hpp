@@ -22,6 +22,7 @@ namespace disruptor {
 
         RingBuffer<T, size_t> &ringBuffer;
 
+
     public:
         explicit BatchEventProcessor(SequenceBarrier &barrier, EventHandler handler, RingBuffer<T, size_t> &ringBuffer
         ) : sequenceBarrier(barrier), eventHandler(handler), ringBuffer(ringBuffer) {
@@ -29,7 +30,7 @@ namespace disruptor {
 
 
         Sequence getSequence() const override {
-            return this->sequence.getRelax();
+            return this->sequence.get();
         }
 
 
@@ -51,7 +52,7 @@ namespace disruptor {
                 try {
                     const int64_t availableSequence = this->sequenceBarrier.waitFor(nextSequence);
                     while (nextSequence <= availableSequence) {
-                        T &event = this->dataProvider.get(nextSequence);
+                        T &event = this->ringBuffer.get(nextSequence);
                         this->eventHandler(event, nextSequence, nextSequence == availableSequence);
                         nextSequence++;
                     }

@@ -6,7 +6,7 @@ namespace disruptor {
     class Disruptor {
         RingBuffer<T> ringBuffer;
 
-tiep tuc nhe
+tiep tuc disruptor nhes
 
         đoạn này hiểu nguyên lý của nó rồi
         giờ phải tạo các interface processor. Batch processor chỉ là kế thừa

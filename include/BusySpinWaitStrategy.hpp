@@ -43,7 +43,7 @@ namespace disruptor
             while ((availableSequence = cursor.get()) < sequence)
             {
                 barrier.checkAlert();
-                std::this_thread::yield(); // Equivalent to Thread.onSpinWait() in Java
+                std::this_thread::yield();
             }
 
             return availableSequence;
