@@ -1,1 +1,3 @@
 - phần định nghĩa hàm để ở file .hpp, phần thân hàm tách ra file .cpp riêng. Vì hàm trong class trên file .hpp mà có thân hàm luôn thì nó coi là inline, sẽ copy sang tất cả các nơi gọi làm cho code phình to nhiều
+- trong các producer (single, multi) hoặc bất cứ nơi nào gọi Util.getMinimumSequence thì cần xem xét dùng FixedSequenceGroup thay vì phải tính thủ công. Trong FixedSequenceGroup đã tối ưu cả cache rồi
+- 

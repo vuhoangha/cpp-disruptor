@@ -17,9 +17,7 @@ namespace disruptor {
         std::array<T, N> entries;
         char padding4[CACHE_LINE_SIZE * 2];
 
-        alignas(CACHE_LINE_SIZE) const char padding5[CACHE_LINE_SIZE];
         Sequencer &sequencer;
-        char padding6[CACHE_LINE_SIZE * 2];
 
         std::function<T()> eventFactory;
 

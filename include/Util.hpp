@@ -32,6 +32,20 @@ namespace disruptor {
         }
 
 
+        template<size_t N>
+        static int64_t getMinimumSequenceWithCache(const std::array<Sequence *, N>& sequences, const int64_t cached_min_sequence = INT64_MIN) {
+            int64_t minimumSequence = INT64_MAX;
+            for (const auto &sequence: sequences) {
+                const int64_t value = sequence->get();
+                if (value <= cached_min_sequence) {
+                    return cached_min_sequence;
+                }
+                minimumSequence = std::min(minimumSequence, value);
+            }
+            return minimumSequence;
+        }
+
+
         static std::vector<Sequence> getSequencesFor(const std::vector<EventProcessor> &processors) {
             std::vector<Sequence> sequences;
             for (const auto &processor: processors) {

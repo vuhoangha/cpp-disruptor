@@ -56,13 +56,12 @@ namespace disruptor
     public:
         [[nodiscard]] int64_t waitFor(const int64_t sequence,
                                       const Sequence &cursor,
-                                      const Sequence &dependent_sequence,
                                       SequenceBarrier &barrier) override
         {
             int64_t availableSequence;
             int counter = SPIN_TRIES;
 
-            while ((availableSequence = dependent_sequence.get()) < sequence)
+            while ((availableSequence = cursor.get()) < sequence)
             {
                 counter = applyWaitMethod(barrier, counter);
             }

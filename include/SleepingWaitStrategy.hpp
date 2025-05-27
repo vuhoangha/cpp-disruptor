@@ -40,9 +40,9 @@ namespace disruptor
     class SleepingWaitStrategy : public WaitStrategy
     {
     private:
-        static const int SPIN_THRESHOLD = 100;
-        static const int DEFAULT_RETRIES = 200;
-        static const int64_t DEFAULT_SLEEP = 100;
+        static constexpr int SPIN_THRESHOLD = 100;
+        static constexpr int DEFAULT_RETRIES = 200;
+        static constexpr int64_t DEFAULT_SLEEP = 100;
 
         const int retries;
         const int64_t sleepTimeNs;
@@ -93,13 +93,12 @@ namespace disruptor
 
         [[nodiscard]] int64_t waitFor(const int64_t sequence,
                                       const Sequence &cursor,
-                                      const Sequence &dependent_sequence,
                                       SequenceBarrier &barrier) override
         {
             int64_t availableSequence;
             int counter = retries;
 
-            while ((availableSequence = dependent_sequence.get()) < sequence)
+            while ((availableSequence = cursor.get()) < sequence)
             {
                 counter = applyWaitMethod(barrier, counter);
             }

@@ -34,24 +34,6 @@ namespace disruptor {
         }
 
 
-        bool hasAvailableCapacity(const int requiredCapacity) const override {
-            const int64_t lastClaimedSequence = this->cursor.getRelax();
-            const int64_t wrapPoint = lastClaimedSequence + requiredCapacity - this->bufferSize;
-            const int64_t cachedGatingSequence = this->cachedValue.getRelax();
-
-            if (cachedGatingSequence < wrapPoint) {
-                const int64_t minSequence = Util::getMinimumSequence(this->gatingSequences, cachedGatingSequence);
-                this->cachedValue.setRelax(minSequence);
-
-                if (minSequence < wrapPoint) {
-                    return false;
-                }
-            }
-
-            return true;
-        }
-
-
         void claim(const int64_t sequence) override {
             this->cursor.set(sequence);
         }

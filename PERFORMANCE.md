@@ -1,3 +1,6 @@
+- Sử dụng cache line 128 thay vì 64 nhé, vì 1 số chip mới có cơ chế prefetching dẫn tới nó load cả cache line liền kề. Vậy nên khi cache line liền kề thay đổi thì core hiện tại cũng phải load lại
+  - https://github.com/LMAX-Exchange/disruptor/issues/158
+  - https://github.com/LMAX-Exchange/disruptor/issues/211
 - các comment có đánh dấu "__PERF" là gợi ý tối ưu
 - Tối ưu rẽ nhánh (Branch Prediction Cache)
 - Tối ưu sử dụng SIMD

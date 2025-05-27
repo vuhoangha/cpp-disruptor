@@ -16,52 +16,12 @@ namespace disruptor {
 		const char padding2[CACHE_LINE_SIZE - sizeof(std::atomic<int64_t>) * 2];
 		const char padding3[CACHE_LINE_SIZE];
 
-		// kiểm tra xem 1 vị trí trong RingBuffer đã được các consumer xử lý xong chưa để publisher ghi dữ liệu vào
-		bool hasAvailableCapacity(const int requiredCapacity) const override {
-			const int64_t localNextValue = this->nextValue;
-			const int64_t wrapPoint = localNextValue + requiredCapacity - bufferSize;
-
-			// wrapPoint: chính là vị trí lớn nhất sẽ được publisher lấy nhưng tua lại 1 vòng
-			//              Khi các consumer chưa xử lý xong vị trí wrapPoint này thì đồng nghĩa ko thể ghi đè dữ liệu vào đươc
-			// dưới đây tôi có bỏ bớt logic so với mã nguồn vì các case họ cover cho tính năng thì tôi ko support tính năng ấy
-			// https://github.com/LMAX-Exchange/disruptor/issues/291
-			// https://github.com/LMAX-Exchange/disruptor/issues/280
-			if (const int64_t cachedGatingSequence = this->cachedValue; cachedGatingSequence < wrapPoint) {
-				if (const int64_t minSequence = Util::getMinimumSequence(gatingSequences, localNextValue); minSequence < wrapPoint) {
-					return false;
-				}
-			}
-			return true;
-		}
 
 		bool sameThread() {
 			return ProducerThreadAssertion::isSameThreadProducingTo(this);
 		}
 
 	public:
-		int64_t tryNext() override {
-			return this->tryNext(1);
-		}
-
-
-		int64_t tryNext(const int n) override {
-			assert(sameThread() && "Accessed by two threads - use ProducerType.MULTI!");
-
-			if (n < 1 || n > bufferSize)
-			{
-				throw std::invalid_argument("n must be > 0 and < bufferSize");
-			}
-
-			if (!hasAvailableCapacity(n)) {
-				throw InsufficientCapacityException();
-			}
-
-			int64_t nextSequence = this->nextValue += n;
-
-			return nextSequence;
-		}
-
-
 		int64_t next() override {
 			return this->next(1);
 		}
@@ -80,7 +40,6 @@ namespace disruptor {
 			int64_t wrapPoint = nextSequence - bufferSize;
 			int64_t cachedGatingSequence = this->cachedValue;
 
-			// logic chi tiết đọc ở hasAvailableCapacity
 			if (cachedGatingSequence < wrapPoint) {
 				// chờ cho tới khi consumer xử lý xong để có chỗ trống ghi dữ liệu
 				int64_t minSequence;

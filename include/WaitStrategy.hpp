@@ -4,6 +4,7 @@
 #include "Sequence.hpp"
 #include "SequenceBarrier.hpp"
 #include "AlertException.hpp"
+#include "FixedSequenceGroup.hpp"
 #include "TimeoutException.hpp"
 
 namespace disruptor
@@ -25,9 +26,7 @@ namespace disruptor
          * handles this case and will signal a timeout if required.
          *
          * @param sequence          to be waited on.
-         * @param cursor            the main sequence from ringbuffer. Wait/notify strategies will
-         *                         need this as it's the only sequence that is also notified upon update.
-         * @param dependentSequence on which to wait.
+         * @param cursor            the main or dependent sequences
          * @param barrier           the processor is waiting on.
          * @return the sequence that is available which may be greater than the requested sequence.
          * @throws AlertException if the status of the Disruptor has changed.
@@ -35,8 +34,7 @@ namespace disruptor
          */
         [[nodiscard]] virtual int64_t waitFor(
             const int64_t sequence,
-            const Sequence &cursor,
-            const Sequence &dependentSequence,
+            const Sequence& cursor,
             SequenceBarrier &barrier) = 0;
 
         /**

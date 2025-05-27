@@ -30,34 +30,29 @@ namespace disruptor {
      * SequenceBarrier handed out for gating EventProcessors on a cursor sequence and optional dependent EventProcessor(s),
      * using the given WaitStrategy.
      */
+    template<size_t N>
     class ProcessingSequenceBarrier : public SequenceBarrier {
     private:
         WaitStrategy &waitStrategy;
-        Sequence &dependentSequence;
         bool alerted;
-        Sequence &cursorSequence;
         Sequencer &sequencer;
-        std::unique_ptr<FixedSequenceGroup> ownedSequenceGroup; // biến này để chứa lại object FixedSequenceGroup được tạo ra, tránh nó bị destructor làm lỗi biến "dependentSequence"
+        FixedSequenceGroup<N> dependentSequences;
 
     public:
         ProcessingSequenceBarrier(
             Sequencer &sequencer,
             WaitStrategy &waitStrategy,
-            Sequence &cursorSequence,
-            const std::vector<std::shared_ptr<Sequence> > &dependentSequences)
+            const std::initializer_list<std::reference_wrapper<Sequence> > dependentSequences)
             : waitStrategy(waitStrategy),
               alerted(false),
-              cursorSequence(cursorSequence),
               sequencer(sequencer),
-              // Khởi tạo ownedSequenceGroup trước
-              ownedSequenceGroup(dependentSequences.empty() ? nullptr : std::make_unique<FixedSequenceGroup>(dependentSequences)),
-              // Sau đó khởi tạo dependentSequence để tham chiếu đến đối tượng thích hợp
-              dependentSequence(dependentSequences.empty() ? cursorSequence : static_cast<Sequence &>(*ownedSequenceGroup)) {
+              dependentSequences(dependentSequences) {
         }
+
 
         int64_t waitFor(int64_t sequence) override {
             checkAlert();
-            int64_t availableSequence = waitStrategy.waitFor(sequence, cursorSequence, dependentSequence, *this);
+            int64_t availableSequence = waitStrategy.waitFor(sequence, dependentSequence, *this);
 
             if (availableSequence < sequence) {
                 return availableSequence;

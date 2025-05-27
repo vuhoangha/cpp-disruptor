@@ -23,14 +23,6 @@ namespace disruptor
          */
         virtual int getBufferSize() const = 0;
 
-        /**
-         * Kiểm tra xem buffer có khả năng cấp phát "requiredCapacity" vị trí trống để producer sử dụng không.
-         * Phương thức này được sử dụng trong môi trường đa luồng nên kết quả chỉ dùng để check tham khảo
-         *
-         * @param requiredCapacity trong buffer
-         * @return true nếu buffer có khả năng cấp phát "requiredCapacity" vị trí trống tiếp theo, ngược lại false.
-         */
-        virtual bool hasAvailableCapacity(const int requiredCapacity) const = 0;
 
         /**
          * Get the remaining capacity for this sequencer.

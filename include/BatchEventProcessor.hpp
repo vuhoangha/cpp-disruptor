@@ -7,6 +7,7 @@
 #include "SequenceBarrier.hpp"
 #include "AlertException.hpp"
 #include "DataProvider.hpp"
+#include "RingBuffer.hpp"
 
 namespace disruptor {
     template<typename T>
@@ -19,16 +20,16 @@ namespace disruptor {
         // Biến lưu trữ function object
         EventHandler eventHandler;
 
-        DataProvider<T> &dataProvider;
+        RingBuffer<T, size_t> &ringBuffer;
 
     public:
-        explicit BatchEventProcessor(SequenceBarrier &barrier, EventHandler handler, DataProvider<T> &dataProvider
-        ) : sequenceBarrier(barrier), eventHandler(handler), dataProvider(dataProvider) {
+        explicit BatchEventProcessor(SequenceBarrier &barrier, EventHandler handler, RingBuffer<T, size_t> &ringBuffer
+        ) : sequenceBarrier(barrier), eventHandler(handler), ringBuffer(ringBuffer) {
         }
 
 
-        Sequence &getSequence() const override {
-            return this->sequence;
+        Sequence getSequence() const override {
+            return this->sequence.getRelax();
         }
 
 
