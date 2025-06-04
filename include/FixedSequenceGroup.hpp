@@ -13,7 +13,7 @@ namespace disruptor {
     /**
      * Hides a group of Sequences behind a single Sequence
      */
-    template<size_t N>
+    template<size_t NUMBER_DEPENDENT_SEQUENCES>
     class FixedSequenceGroup final : public Sequence {
     private:
         // cache lại min_sequence để tăng performance khi getMinimumSequence
@@ -22,7 +22,7 @@ namespace disruptor {
         const char padding2[CACHE_LINE_SIZE - sizeof(std::atomic<int64_t>)];
         const char padding3[CACHE_LINE_SIZE];
 
-        std::array<Sequence *, N> sequences; // lưu array con trỏ tới các sequence
+        std::array<Sequence *, NUMBER_DEPENDENT_SEQUENCES> sequences; // lưu array con trỏ tới các sequence
         const char padding4[CACHE_LINE_SIZE * 2];
 
     public:
@@ -31,7 +31,7 @@ namespace disruptor {
         }
 
         explicit FixedSequenceGroup() {
-            for (std::size_t i = 0; i < N; ++i) {
+            for (std::size_t i = 0; i < NUMBER_DEPENDENT_SEQUENCES; ++i) {
                 sequences[i] = nullptr;
             }
         }
@@ -39,7 +39,7 @@ namespace disruptor {
 
         // Phương thức để thiết lập sequences sau khi khởi tạo
         void setSequences(const std::initializer_list<std::reference_wrapper<Sequence> > dependentSequences) {
-            assert(dependentSequences.size() == N && std::format("Require {} sequences", N).c_str());
+            assert(dependentSequences.size() == NUMBER_DEPENDENT_SEQUENCES && std::format("Require {} sequences", NUMBER_DEPENDENT_SEQUENCES).c_str());
             std::size_t i = 0;
             for (auto &ref: dependentSequences) {
                 sequences[i++] = &ref.get();
