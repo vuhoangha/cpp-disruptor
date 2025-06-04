@@ -15,15 +15,15 @@ namespace disruptor {
      * common functionality like the management of gating sequences (add/remove) and
      * ownership of the current cursor.
      */
-    template<typename T, size_t N>
+    template<typename T, size_t RING_BUFFER_SIZE, size_t NUMBER_GATING_SEQUENCES>
     class AbstractSequencer : public Sequencer {
     protected:
         Sequence cursor{INITIAL_CURSOR_VALUE};
-        std::vector<std::shared_ptr<Sequence> > gatingSequences;
-        RingBuffer<T, N> &ringBuffer;
+        FixedSequenceGroup<NUMBER_GATING_SEQUENCES> gatingSequences;
+        RingBuffer<T, RING_BUFFER_SIZE> &ringBuffer;
 
     public:
-        explicit AbstractSequencer(const RingBuffer<T, N> &ringBuffer)
+        explicit AbstractSequencer(const RingBuffer<T, RING_BUFFER_SIZE> &ringBuffer)
             : ringBuffer(ringBuffer), bufferSize(ringBuffer.getBufferSize()) {
         }
 

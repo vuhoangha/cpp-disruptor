@@ -8,8 +8,8 @@
 #include <cassert>
 
 namespace disruptor {
-    template<typename T, size_t N>
-    class SingleProducerSequencer : public AbstractSequencer<T, N> {
+    template<typename T, size_t RING_BUFFER_SIZE, size_t NUMBER_GATING_SEQUENCES>
+    class SingleProducerSequencer : public AbstractSequencer<T, RING_BUFFER_SIZE, NUMBER_GATING_SEQUENCES> {
         alignas(CACHE_LINE_SIZE) const char padding1[CACHE_LINE_SIZE];
         int64_t nextValue{Sequencer::INITIAL_CURSOR_VALUE}; // seq gần nhất đã được publisher claim
         int64_t cachedValue{Sequencer::INITIAL_CURSOR_VALUE}; // seq nhỏ nhất đã được các gatingSequences xử lý
@@ -22,7 +22,7 @@ namespace disruptor {
         }
 
     public:
-        explicit SingleProducerSequencer(const RingBuffer<T, N> &ringBuffer) : AbstractSequencer<T, N>(ringBuffer) {
+        explicit SingleProducerSequencer(const RingBuffer<T, RING_BUFFER_SIZE> &ringBuffer) : AbstractSequencer<T, RING_BUFFER_SIZE, NUMBER_GATING_SEQUENCES>(ringBuffer) {
         }
 
 

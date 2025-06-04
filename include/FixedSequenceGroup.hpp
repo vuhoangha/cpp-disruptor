@@ -1,18 +1,3 @@
-/*
- * Copyright 2012 LMAX Ltd.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
 #pragma once
 
 #include <string>
@@ -42,6 +27,18 @@ namespace disruptor {
 
     public:
         explicit FixedSequenceGroup(const std::initializer_list<std::reference_wrapper<Sequence> > dependentSequences) {
+            this->setSequences(dependentSequences);
+        }
+
+        explicit FixedSequenceGroup() {
+            for (std::size_t i = 0; i < N; ++i) {
+                sequences[i] = nullptr;
+            }
+        }
+
+
+        // Phương thức để thiết lập sequences sau khi khởi tạo
+        void setSequences(const std::initializer_list<std::reference_wrapper<Sequence> > dependentSequences) {
             assert(dependentSequences.size() == N && std::format("Require {} sequences", N).c_str());
             std::size_t i = 0;
             for (auto &ref: dependentSequences) {
@@ -100,6 +97,13 @@ namespace disruptor {
 
     public:
         explicit FixedSequenceGroup(const std::initializer_list<std::reference_wrapper<Sequence> > dependentSequences) {
+            setSequences(dependentSequences);
+        }
+
+        explicit FixedSequenceGroup() : sequence(nullptr) {
+        }
+
+        void setSequences(const std::initializer_list<std::reference_wrapper<Sequence> > dependentSequences) {
             assert(dependentSequences.size() == 1 && "Require exactly 1 sequence");
             sequence = &dependentSequences.begin()->get();
         }

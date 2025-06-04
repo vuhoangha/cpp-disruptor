@@ -7,8 +7,8 @@
  * availableBuffer: Lưu số vòng quay tương ứng vị trí trong ring_buffer để biết 1 sequence đã được publish hay chưa
  */
 namespace disruptor {
-    template<typename T, size_t N>
-    class MultiProducerSequencer : public AbstractSequencer<T, N> {
+    template<typename T, size_t RING_BUFFER_SIZE, size_t NUMBER_GATING_SEQUENCES>
+    class MultiProducerSequencer : public AbstractSequencer<T, RING_BUFFER_SIZE, NUMBER_GATING_SEQUENCES> {
         // seq nhỏ nhất đã được các gatingSequences xử lý
         alignas(CACHE_LINE_SIZE) Sequence cachedValue{Sequence::INITIAL_VALUE};
 
@@ -22,12 +22,12 @@ namespace disruptor {
 
         // mảng chứa số vòng quay của từng vị trí trong RingBuffer. Nó sẽ báo hiệu sequence này được publish hay chưa
         // vì cần tính chất atomic + memory barriers nên Sequence hoàn toàn đáp ứng
-        std::array<Sequence, N> availableBuffer;
+        std::array<Sequence, RING_BUFFER_SIZE> availableBuffer;
         char padding4[CACHE_LINE_SIZE * 2];
 
     public:
-        explicit MultiProducerSequencer(const RingBuffer<T, N> &ringBuffer)
-            : AbstractSequencer<T, N>(ringBuffer), indexMask(ringBuffer.getBufferSize() - 1), indexShift(Util::log2(ringBuffer.getBufferSize())) {
+        explicit MultiProducerSequencer(const RingBuffer<T, RING_BUFFER_SIZE> &ringBuffer)
+            : AbstractSequencer<T, RING_BUFFER_SIZE, NUMBER_GATING_SEQUENCES>(ringBuffer), indexMask(ringBuffer.getBufferSize() - 1), indexShift(Util::log2(ringBuffer.getBufferSize())) {
             for (auto &seq: availableBuffer) {
                 seq.set(-1);
             }
