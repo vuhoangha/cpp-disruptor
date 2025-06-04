@@ -24,7 +24,7 @@ namespace disruptor {
 
     public:
         explicit AbstractSequencer(const RingBuffer<T, RING_BUFFER_SIZE> &ringBuffer)
-            : ringBuffer(ringBuffer), bufferSize(ringBuffer.getBufferSize()) {
+            : ringBuffer(ringBuffer) {
         }
 
 
@@ -35,21 +35,9 @@ namespace disruptor {
             return cursor.get();
         }
 
-        /**
-         * @see Sequencer#addGatingSequences(Sequence...)
-         */
-        void addGatingSequences(const std::vector<std::shared_ptr<Sequence> > &sequences) override {
-            // Lấy giá trị cursor hiện tại
-            const int64_t cursorSequence = getCursor();
 
-            // Dự trữ không gian cho vector
-            gatingSequences.reserve(gatingSequences.size() + sequences.size());
-
-            // Thiết lập giá trị và thêm các sequence mới
-            for (const auto &sequence: sequences) {
-                sequence->set(cursorSequence);
-                gatingSequences.push_back(sequence);
-            }
+        void addGatingSequences(const std::initializer_list<std::reference_wrapper<Sequence> > sequences) override {
+            gatingSequences.setSequences(sequences);
         }
 
 

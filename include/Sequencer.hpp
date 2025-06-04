@@ -1,7 +1,6 @@
 #pragma once
 
 #include <cstdint>
-#include <memory>
 #include <vector>
 #include "Cursored.hpp"
 #include "Sequenced.hpp"
@@ -29,13 +28,8 @@ namespace disruptor {
          */
         virtual bool isAvailable(int64_t sequence) = 0;
 
-        /**
-         * Add the specified gating sequences to this instance of the Disruptor. They will
-         * safely and atomically added to the list of gating sequences.
-         *
-         * @param gatingSequences The sequences to add.
-         */
-        virtual void addGatingSequences(const std::vector<std::shared_ptr<Sequence> > &gatingSequences) = 0;
+
+        virtual void addGatingSequences(const std::initializer_list<std::reference_wrapper<Sequence> > sequences) = 0;
 
 
         /**
