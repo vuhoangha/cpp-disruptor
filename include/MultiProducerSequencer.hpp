@@ -7,8 +7,8 @@
  * availableBuffer: Lưu số vòng quay tương ứng vị trí trong ring_buffer để biết 1 sequence đã được publish hay chưa
  */
 namespace disruptor {
-    template<size_t N>
-    class MultiProducerSequencer : public AbstractSequencer {
+    template<typename T, size_t N>
+    class MultiProducerSequencer : public AbstractSequencer<T, N> {
         // seq nhỏ nhất đã được các gatingSequences xử lý
         alignas(CACHE_LINE_SIZE) Sequence cachedValue{Sequence::INITIAL_VALUE};
 
@@ -26,8 +26,8 @@ namespace disruptor {
         char padding4[CACHE_LINE_SIZE * 2];
 
     public:
-        explicit MultiProducerSequencer(const int bufferSize)
-            : AbstractSequencer(bufferSize), indexMask(bufferSize - 1), indexShift(Util::log2(bufferSize)) {
+        explicit MultiProducerSequencer(const RingBuffer<T, N> &ringBuffer)
+            : AbstractSequencer<T, N>(ringBuffer), indexMask(ringBuffer.getBufferSize() - 1), indexShift(Util::log2(ringBuffer.getBufferSize())) {
             for (auto &seq: availableBuffer) {
                 seq.set(-1);
             }
@@ -45,13 +45,15 @@ namespace disruptor {
 
 
         int64_t next(const int32_t n) override {
-            if (n < 1 || n > this->bufferSize) {
+            const int32_t bufferSize = this->ringBuffer.getBufferSize();
+
+            if (n < 1 || n > bufferSize) {
                 throw std::invalid_argument("n must be > 0 and < bufferSize");
             }
 
             const int64_t currentSequence = this->cursor.getAndAddRelax(n);
             const int64_t nextSequence = currentSequence + n;
-            const int64_t wrapPoint = nextSequence - this->bufferSize;
+            const int64_t wrapPoint = nextSequence - bufferSize;
             const int64_t cachedGatingSequence = this->cachedValue.getRelax();
 
             if (cachedGatingSequence < wrapPoint) {
@@ -71,7 +73,7 @@ namespace disruptor {
             const int64_t currentSequence = this->cursor.getRelax();
             const int64_t consumed = Util::getMinimumSequence(this->gatingSequences, currentSequence);
             const int64_t produced = currentSequence;
-            return getBufferSize() - (produced - consumed);
+            return this->ringBuffer.getBufferSize() - (produced - consumed);
         }
 
 

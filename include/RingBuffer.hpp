@@ -39,5 +39,9 @@ namespace disruptor {
         T get(const int64_t sequence) const {
             return this->entries[sequence & this->indexMask];
         }
+
+        int32_t getBufferSize() const {
+            return this->bufferSize;
+        }
     };
 }

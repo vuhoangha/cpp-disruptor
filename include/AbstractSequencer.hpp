@@ -2,65 +2,43 @@
 
 #include <vector>
 #include <memory>
-#include <stdexcept>
-#include <bit>
 
 #include "Sequencer.hpp"
 #include "Sequence.hpp"
 #include "ProcessingSequenceBarrier.hpp"
+#include "RingBuffer.hpp"
 #include "Util.hpp"
 
-namespace disruptor
-{
-
+namespace disruptor {
     /**
      * Base class for the various sequencer types (single/multi). Provides
      * common functionality like the management of gating sequences (add/remove) and
      * ownership of the current cursor.
      */
-    class AbstractSequencer : public Sequencer
-    {
+    template<typename T, size_t N>
+    class AbstractSequencer : public Sequencer {
     protected:
         Sequence cursor{INITIAL_CURSOR_VALUE};
-        const int bufferSize;
-        std::vector<std::shared_ptr<Sequence>> gatingSequences;
+        std::vector<std::shared_ptr<Sequence> > gatingSequences;
+        RingBuffer<T, N> &ringBuffer;
 
     public:
-        explicit AbstractSequencer(const int bufferSize)
-            : bufferSize(bufferSize)
-        {
-            if (bufferSize < 1)
-            {
-                throw std::invalid_argument("bufferSize must not be less than 1");
-            }
-            if (std::popcount(static_cast<unsigned int>(bufferSize)) != 1)
-            {
-                throw std::invalid_argument("bufferSize must be a power of 2");
-            }
+        explicit AbstractSequencer(const RingBuffer<T, N> &ringBuffer)
+            : ringBuffer(ringBuffer), bufferSize(ringBuffer.getBufferSize()) {
         }
 
 
         /**
          * @see Sequencer#getCursor()
          */
-        int64_t getCursor() override
-        {
+        int64_t getCursor() override {
             return cursor.get();
-        }
-
-        /**
-         * @see Sequencer#getBufferSize()
-         */
-        int getBufferSize() const override
-        {
-            return bufferSize;
         }
 
         /**
          * @see Sequencer#addGatingSequences(Sequence...)
          */
-        void addGatingSequences(const std::vector<std::shared_ptr<Sequence>> &sequences) override
-        {
+        void addGatingSequences(const std::vector<std::shared_ptr<Sequence> > &sequences) override {
             // Lấy giá trị cursor hiện tại
             const int64_t cursorSequence = getCursor();
 
@@ -68,8 +46,7 @@ namespace disruptor
             gatingSequences.reserve(gatingSequences.size() + sequences.size());
 
             // Thiết lập giá trị và thêm các sequence mới
-            for (const auto &sequence : sequences)
-            {
+            for (const auto &sequence: sequences) {
                 sequence->set(cursorSequence);
                 gatingSequences.push_back(sequence);
             }
@@ -79,10 +56,8 @@ namespace disruptor
         /**
          * @see Sequencer#getMinimumSequence()
          */
-        int64_t getMinimumSequence() override
-        {
+        int64_t getMinimumSequence() override {
             return Util::getMinimumSequence(gatingSequences, cursor.get());
         }
     };
-
 }

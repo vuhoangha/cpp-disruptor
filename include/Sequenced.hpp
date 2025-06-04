@@ -14,13 +14,6 @@ namespace disruptor
          */
         virtual ~Sequenced() = default;
 
-        /**
-         * The capacity of the data structure to hold entries.
-         *
-         * @return the size of the RingBuffer.
-         */
-        virtual int getBufferSize() const = 0;
-
 
         /**
          * Get the remaining capacity for this sequencer.

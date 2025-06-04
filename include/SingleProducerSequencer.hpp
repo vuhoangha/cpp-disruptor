@@ -8,11 +8,11 @@
 #include <cassert>
 
 namespace disruptor {
-    class SingleProducerSequencer : public AbstractSequencer {
-    private:
+    template<typename T, size_t N>
+    class SingleProducerSequencer : public AbstractSequencer<T, N> {
         alignas(CACHE_LINE_SIZE) const char padding1[CACHE_LINE_SIZE];
-        int64_t nextValue{INITIAL_CURSOR_VALUE}; // seq gần nhất đã được publisher claim
-        int64_t cachedValue{INITIAL_CURSOR_VALUE}; // seq nhỏ nhất đã được các gatingSequences xử lý
+        int64_t nextValue{Sequencer::INITIAL_CURSOR_VALUE}; // seq gần nhất đã được publisher claim
+        int64_t cachedValue{Sequencer::INITIAL_CURSOR_VALUE}; // seq nhỏ nhất đã được các gatingSequences xử lý
         const char padding2[CACHE_LINE_SIZE - sizeof(std::atomic<int64_t>) * 2];
         const char padding3[CACHE_LINE_SIZE];
 
@@ -22,7 +22,7 @@ namespace disruptor {
         }
 
     public:
-        explicit SingleProducerSequencer(const int bufferSize) : AbstractSequencer(bufferSize) {
+        explicit SingleProducerSequencer(const RingBuffer<T, N> &ringBuffer) : AbstractSequencer<T, N>(ringBuffer) {
         }
 
 
@@ -33,6 +33,7 @@ namespace disruptor {
 
         int64_t next(const int n) override {
             assert(sameThread() && "Accessed by two threads - use ProducerType.MULTI!");
+            const int32_t bufferSize = this->ringBuffer.getBufferSize();
 
             if (n < 1 || n > bufferSize) {
                 throw std::invalid_argument("n must be > 0 and < bufferSize");
@@ -62,7 +63,7 @@ namespace disruptor {
         int64_t remainingCapacity() const override {
             const long consumed = Util::getMinimumSequence(this->gatingSequences, nextValue);
             const long produced = this->nextValue;
-            return this->bufferSize - (produced - consumed);
+            return this->ringBuffer.getBufferSize() - (produced - consumed);
         }
 
 
@@ -83,7 +84,7 @@ namespace disruptor {
 
         bool isAvailable(const int64_t sequence) override {
             const int64_t currentSequence = this->cursor.get();
-            return sequence <= currentSequence && sequence > currentSequence - bufferSize;
+            return sequence <= currentSequence && sequence > currentSequence - this->ringBuffer.getBufferSize();
         }
 
 
