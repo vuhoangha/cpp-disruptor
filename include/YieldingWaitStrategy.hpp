@@ -69,10 +69,6 @@ namespace disruptor
             return availableSequence;
         }
 
-        void signalAllWhenBlocking() noexcept override
-        {
-            // Do nothing, this strategy doesn't block
-        }
 
         [[nodiscard]] std::string toString() const noexcept override
         {

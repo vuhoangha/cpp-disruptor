@@ -1,38 +1,41 @@
-/*
- * Copyright 2011 LMAX Ltd.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
 #pragma once
 
 #include <atomic>
 #include <vector>
 #include "SequenceBarrier.hpp"
-#include "WaitStrategy.hpp"
 #include "Sequence.hpp"
 #include "Sequencer.hpp"
 #include "FixedSequenceGroup.hpp"
 #include "AlertException.hpp"
+#include "WaitStrategyType.hpp"
+#include "BusySpinWaitStrategy.hpp"
+#include "SleepingWaitStrategy.hpp"
+#include "YieldingWaitStrategy.hpp"
 
 namespace disruptor {
-    /**
-     * SequenceBarrier handed out for gating EventProcessors on a cursor sequence and optional dependent EventProcessor(s),
-     * using the given WaitStrategy.
-     */
-    template<size_t N>
-    class ProcessingSequenceBarrier : public SequenceBarrier {
+    template<WaitStrategyType T>
+    struct WaitStrategySelector;
+
+    template<>
+    struct WaitStrategySelector<WaitStrategyType::BUSY_SPIN> {
+        using type = BusySpinWaitStrategy;
+    };
+
+    template<>
+    struct WaitStrategySelector<WaitStrategyType::SLEEP> {
+        using type = SleepingWaitStrategy;
+    };
+
+    template<>
+    struct WaitStrategySelector<WaitStrategyType::YIELD> {
+        using type = YieldingWaitStrategy;
+    };
+
+    template<WaitStrategyType T, size_t N>
+    class ProcessingSequenceBarrier final : public SequenceBarrier {
     private:
-        WaitStrategy &waitStrategy;
+        using Strategy = typename WaitStrategySelector<T>::type;
+        Strategy waitStrategy;
         bool alerted;
         Sequencer &sequencer;
         FixedSequenceGroup<N> dependentSequences;
@@ -40,10 +43,9 @@ namespace disruptor {
     public:
         ProcessingSequenceBarrier(
             Sequencer &sequencer,
-            WaitStrategy &waitStrategy,
+            const WaitStrategyType waitStrategyType,
             const std::initializer_list<std::reference_wrapper<Sequence> > dependentSequences)
-            : waitStrategy(waitStrategy),
-              alerted(false),
+            : alerted(false),
               sequencer(sequencer),
               dependentSequences(dependentSequences) {
         }
@@ -51,8 +53,8 @@ namespace disruptor {
 
         int64_t waitFor(int64_t sequence) override {
             checkAlert();
-            int64_t availableSequence = waitStrategy.waitFor(sequence, dependentSequence, *this);
 
+            const int64_t availableSequence = waitStrategy.waitFor(sequence, this->dependentSequences, *this);
             if (availableSequence < sequence) {
                 return availableSequence;
             }
@@ -60,22 +62,26 @@ namespace disruptor {
             return sequencer.getHighestPublishedSequence(sequence, availableSequence);
         }
 
+
         int64_t getCursor() const override {
-            return dependentSequence.get();
+            return this->dependentSequences.get();
         }
+
 
         bool isAlerted() const override {
             return alerted;
         }
 
+
         void alert() override {
             alerted = true;
-            waitStrategy.signalAllWhenBlocking();
         }
+
 
         void clearAlert() override {
             alerted = false;
         }
+
 
         void checkAlert() const override {
             if (alerted) {
@@ -83,4 +89,4 @@ namespace disruptor {
             }
         }
     };
-} // namespace disruptor
+}

@@ -26,8 +26,8 @@ namespace disruptor {
         char padding4[CACHE_LINE_SIZE * 2];
 
     public:
-        explicit MultiProducerSequencer(const int bufferSize, const std::shared_ptr<WaitStrategy> &waitStrategy)
-            : AbstractSequencer(bufferSize, waitStrategy), indexMask(bufferSize - 1), indexShift(Util::log2(bufferSize)), padding{} {
+        explicit MultiProducerSequencer(const int bufferSize)
+            : AbstractSequencer(bufferSize), indexMask(bufferSize - 1), indexShift(Util::log2(bufferSize)) {
             for (auto &seq: availableBuffer) {
                 seq.set(-1);
             }
@@ -77,7 +77,6 @@ namespace disruptor {
 
         void publish(const int64_t sequence) override {
             this->setAvailable(sequence);
-            this->waitStrategy->signalAllWhenBlocking();
         }
 
 
@@ -85,7 +84,6 @@ namespace disruptor {
             for (int64_t i = low; i <= high; ++i) {
                 this->setAvailable(i);
             }
-            this->waitStrategy->signalAllWhenBlocking();
         }
 
 
@@ -106,7 +104,7 @@ namespace disruptor {
         }
 
 
-        bool isAvailable(const int64_t sequence) const override {
+        bool isAvailable(const int64_t sequence) override {
             const int32_t index = calculateIndex(sequence);
             const int64_t flag = calculateAvailabilityFlag(sequence);
             return availableBuffer[index].load(std::memory_order_acquire) == flag;

@@ -1,7 +1,5 @@
 #pragma once
 
-#include <cstdint>
-
 namespace disruptor
 {
 
@@ -23,7 +21,7 @@ namespace disruptor
          *
          * @return current cursor value
          */
-        virtual int64_t getCursor() const = 0;
+        virtual int64_t getCursor() = 0;
     };
 
 }

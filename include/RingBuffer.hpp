@@ -1,10 +1,10 @@
 #pragma once
 
 #include <functional>
-
 #include "Common.hpp"
 #include "Sequencer.hpp"
 
+// chứa bộ đệm vòng với padding kỹ lưỡng
 namespace disruptor {
     template<typename T, size_t N>
     class RingBuffer {
@@ -17,14 +17,10 @@ namespace disruptor {
         std::array<T, N> entries;
         char padding4[CACHE_LINE_SIZE * 2];
 
-        Sequencer &sequencer;
-
         std::function<T()> eventFactory;
 
     public:
-        explicit RingBuffer(Sequencer &sequencer, std::function<T()> &&eventFactory)
-            : sequencer(sequencer), eventFactory(std::move(eventFactory)) {
-            this->bufferSize = this->sequencer.getBufferSize();
+        explicit RingBuffer(const int32_t bufferSize) : bufferSize(bufferSize), eventFactory(std::move(eventFactory)) {
             this->indexMask = this->bufferSize - 1;
 
             if (this->bufferSize < 1) {
@@ -42,22 +38,6 @@ namespace disruptor {
 
         T get(const int64_t sequence) const {
             return this->entries[sequence & this->indexMask];
-        }
-
-        int64_t next() const {
-            return this->sequencer.next();
-        }
-
-        int64_t next(const int32_t n) const {
-            return this->sequencer.next(n);
-        }
-
-        bool isAvailable(const int64_t sequence) const {
-            return this->sequencer.isAvailable(sequence);
-        }
-
-        void addGatingSequences(const std::vector<std::shared_ptr<Sequence> > &gatingSequences) const {
-            this->sequencer.addGatingSequences(gatingSequences);
         }
     };
 }

@@ -5,16 +5,12 @@
 #include "SequenceBarrier.hpp"
 #include "AlertException.hpp"
 #include "FixedSequenceGroup.hpp"
-#include "TimeoutException.hpp"
 
-namespace disruptor
-{
-
+namespace disruptor {
     /**
      * Strategy employed for making EventProcessors wait on a cursor Sequence.
      */
-    class WaitStrategy
-    {
+    class WaitStrategy {
     public:
         virtual ~WaitStrategy() = default;
 
@@ -34,18 +30,12 @@ namespace disruptor
          */
         [[nodiscard]] virtual int64_t waitFor(
             const int64_t sequence,
-            const Sequence& cursor,
-            SequenceBarrier &barrier) = 0;
-
-        /**
-         * Implementations should signal the waiting EventProcessors that the cursor has advanced.
-         */
-        virtual void signalAllWhenBlocking() noexcept = 0;
+            Sequence &cursor,
+            const SequenceBarrier &barrier) = 0;
 
         /**
          * String representation of the wait strategy
          */
         [[nodiscard]] virtual std::string toString() const = 0;
     };
-
 } // namespace disruptor

@@ -6,7 +6,6 @@
 #include "Sequence.hpp"
 #include "SequenceBarrier.hpp"
 #include "AlertException.hpp"
-#include "DataProvider.hpp"
 #include "RingBuffer.hpp"
 
 namespace disruptor {
@@ -21,7 +20,6 @@ namespace disruptor {
         EventHandler eventHandler;
 
         RingBuffer<T, size_t> &ringBuffer;
-
 
     public:
         explicit BatchEventProcessor(SequenceBarrier &barrier, EventHandler handler, RingBuffer<T, size_t> &ringBuffer
@@ -58,7 +56,7 @@ namespace disruptor {
                     }
 
                     this->sequence.set(availableSequence);
-                }  catch (const std::exception &e) {
+                } catch (const std::exception &e) {
                     std::cout << "BatchEventProcessor exception caught: " << e.what() << std::endl;
                     break;
                 }
