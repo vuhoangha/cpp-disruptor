@@ -1,10 +1,7 @@
 #pragma once
 
-#include <cstdint>
 #include "Sequence.hpp"
 #include "SequenceBarrier.hpp"
-#include "AlertException.hpp"
-#include "FixedSequenceGroup.hpp"
 
 namespace disruptor {
     /**

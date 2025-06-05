@@ -31,16 +31,6 @@ namespace disruptor {
 
         virtual void addGatingSequences(const std::initializer_list<std::reference_wrapper<Sequence> > sequences) = 0;
 
-
-        /**
-         * Get the minimum sequence value from all of the gating sequences
-         * added to this ringBuffer.
-         *
-         * @return The minimum gating sequence or the cursor sequence if
-         * no sequences have been added.
-         */
-        virtual int64_t getMinimumSequence() = 0;
-
         /**
          * Get the highest sequence number that can be safely read from the ring buffer. Depending
          * on the implementation of the Sequencer this call may need to scan a number of values

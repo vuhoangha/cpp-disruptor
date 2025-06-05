@@ -8,11 +8,11 @@
 namespace disruptor {
     template<typename T, size_t N>
     class RingBuffer {
-        alignas(CACHE_LINE_SIZE) const char padding1[CACHE_LINE_SIZE];
+        alignas(CACHE_LINE_SIZE) const char padding1[CACHE_LINE_SIZE] = {};
         int64_t indexMask;
         int32_t bufferSize;
-        const char padding2[CACHE_LINE_SIZE - sizeof(std::atomic<int64_t>) - sizeof(std::atomic<int32_t>)];
-        const char padding3[CACHE_LINE_SIZE];
+        const char padding2[CACHE_LINE_SIZE - sizeof(std::atomic<int64_t>) - sizeof(std::atomic<int32_t>)] = {};
+        const char padding3[CACHE_LINE_SIZE] = {};
 
         std::array<T, N> entries;
         char padding4[CACHE_LINE_SIZE * 2];

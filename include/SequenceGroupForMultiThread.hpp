@@ -7,16 +7,12 @@
 #include <atomic>
 
 #include "Sequence.hpp"
-#include "Util.hpp"
 
 namespace disruptor {
-    /**
-     * Hides a group of Sequences behind a single Sequence
-     */
     template<size_t NUMBER_DEPENDENT_SEQUENCES>
-    class FixedSequenceGroup final : public Sequence {
+    class SequenceGroupForMultiThread final : public Sequence {
     private:
-        // cache lại min_sequence để tăng performance khi getMinimumSequence
+        // cache lại min_sequence để tăng performance khi get_minimum_sequence
         alignas(CACHE_LINE_SIZE) const char padding1[CACHE_LINE_SIZE] = {};
         std::atomic<int64_t> cached_min_sequence{Sequence::INITIAL_VALUE};
         const char padding2[CACHE_LINE_SIZE - sizeof(std::atomic<int64_t>)] = {};
@@ -26,18 +22,16 @@ namespace disruptor {
         const char padding4[CACHE_LINE_SIZE * 2] = {};
 
     public:
-        explicit FixedSequenceGroup(const std::initializer_list<std::reference_wrapper<Sequence> > dependentSequences) {
+        explicit SequenceGroupForMultiThread(const std::initializer_list<std::reference_wrapper<Sequence> > dependentSequences) {
             this->setSequences(dependentSequences);
         }
 
-        explicit FixedSequenceGroup() {
+        explicit SequenceGroupForMultiThread() {
             for (std::size_t i = 0; i < NUMBER_DEPENDENT_SEQUENCES; ++i) {
                 sequences[i] = nullptr;
             }
         }
 
-
-        // Phương thức để thiết lập sequences sau khi khởi tạo
         void setSequences(const std::initializer_list<std::reference_wrapper<Sequence> > dependentSequences) {
             assert(dependentSequences.size() == NUMBER_DEPENDENT_SEQUENCES && std::format("Require {} sequences", NUMBER_DEPENDENT_SEQUENCES).c_str());
             std::size_t i = 0;
@@ -46,49 +40,52 @@ namespace disruptor {
             }
         }
 
-
-        [[nodiscard]] inline int64_t get() override {
-            const int64_t min_sequence = cached_min_sequence.load(std::memory_order_relaxed);
-            const int64_t new_min_sequence = Util::getMinimumSequenceWithCache(sequences, min_sequence);
+        [[nodiscard]] int64_t get() override {
+            const int64_t min_sequence = this->cached_min_sequence.load(std::memory_order_relaxed);
+            const int64_t new_min_sequence = get_minimum_sequence(min_sequence);
             if (min_sequence < new_min_sequence) {
-                cached_min_sequence.store(new_min_sequence, std::memory_order_relaxed);
+                this->cached_min_sequence.store(new_min_sequence, std::memory_order_relaxed);
             }
             return new_min_sequence;
         }
 
+        [[nodiscard]] int64_t get_minimum_sequence(const int64_t cached_sequence) {
+            int64_t minimumSequence = INT64_MAX;
+            for (const auto &sequence: this->sequences) {
+                const int64_t value = sequence->get();
+                if (value <= cached_sequence) {
+                    return cached_sequence;
+                }
+                minimumSequence = std::min(minimumSequence, value);
+            }
+            return minimumSequence;
+        }
 
-        /**
-         * Not supported.
-         */
+        // trả ra giá trị cache gần nhất
+        [[nodiscard]] int64_t get_cache() const {
+            return this->cached_min_sequence.load(std::memory_order_relaxed);
+        }
+
         [[noreturn]] void set(int64_t value) override {
-            throw std::runtime_error("FixedSequenceGroup does not support set operation");
+            throw std::runtime_error("SequenceGroupForMultiThread does not support set operation");
         }
 
-        /**
-         * Not supported.
-         */
         [[noreturn]] bool compareAndSet(int64_t expectedValue, int64_t newValue) override {
-            throw std::runtime_error("FixedSequenceGroup does not support compareAndSet operation");
+            throw std::runtime_error("SequenceGroupForMultiThread does not support compareAndSet operation");
         }
 
-        /**
-         * Not supported.
-         */
         [[noreturn]] int64_t incrementAndGet() override {
-            throw std::runtime_error("FixedSequenceGroup does not support incrementAndGet operation");
+            throw std::runtime_error("SequenceGroupForMultiThread does not support incrementAndGet operation");
         }
 
-        /**
-         * Not supported.
-         */
         [[noreturn]] int64_t addAndGet(int64_t increment) override {
-            throw std::runtime_error("FixedSequenceGroup does not support addAndGet operation");
+            throw std::runtime_error("SequenceGroupForMultiThread does not support addAndGet operation");
         }
     };
 
 
     template<>
-    class FixedSequenceGroup<1> final : public Sequence {
+    class SequenceGroupForMultiThread<1> final : public Sequence {
     private:
         alignas(CACHE_LINE_SIZE) const char padding1[CACHE_LINE_SIZE] = {};
         Sequence *sequence;
@@ -96,11 +93,11 @@ namespace disruptor {
         const char padding3[CACHE_LINE_SIZE] = {};
 
     public:
-        explicit FixedSequenceGroup(const std::initializer_list<std::reference_wrapper<Sequence> > dependentSequences) {
+        explicit SequenceGroupForMultiThread(const std::initializer_list<std::reference_wrapper<Sequence> > dependentSequences) {
             setSequences(dependentSequences);
         }
 
-        explicit FixedSequenceGroup() : sequence(nullptr) {
+        explicit SequenceGroupForMultiThread() : sequence(nullptr) {
         }
 
         void setSequences(const std::initializer_list<std::reference_wrapper<Sequence> > dependentSequences) {
@@ -108,38 +105,24 @@ namespace disruptor {
             sequence = &dependentSequences.begin()->get();
         }
 
-
         [[nodiscard]] inline int64_t get() override {
             return sequence->get();
         }
 
-
-        /**
-         * Not supported.
-         */
         [[noreturn]] void set(int64_t value) override {
-            throw std::runtime_error("FixedSequenceGroup does not support set operation");
+            throw std::runtime_error("SequenceGroupForMultiThread does not support set operation");
         }
 
-        /**
-         * Not supported.
-         */
         [[noreturn]] bool compareAndSet(int64_t expectedValue, int64_t newValue) override {
-            throw std::runtime_error("FixedSequenceGroup does not support compareAndSet operation");
+            throw std::runtime_error("SequenceGroupForMultiThread does not support compareAndSet operation");
         }
 
-        /**
-         * Not supported.
-         */
         [[noreturn]] int64_t incrementAndGet() override {
-            throw std::runtime_error("FixedSequenceGroup does not support incrementAndGet operation");
+            throw std::runtime_error("SequenceGroupForMultiThread does not support incrementAndGet operation");
         }
 
-        /**
-         * Not supported.
-         */
         [[noreturn]] int64_t addAndGet(int64_t increment) override {
-            throw std::runtime_error("FixedSequenceGroup does not support addAndGet operation");
+            throw std::runtime_error("SequenceGroupForMultiThread does not support addAndGet operation");
         }
     };
-} // namespace disruptor
+}

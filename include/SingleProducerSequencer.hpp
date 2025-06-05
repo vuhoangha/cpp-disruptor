@@ -7,24 +7,34 @@
 #include "InsufficientCapacityException.hpp"
 #include <cassert>
 
+#include "SequenceGroupForSingleThread.hpp"
+
 namespace disruptor {
     template<typename T, size_t RING_BUFFER_SIZE, size_t NUMBER_GATING_SEQUENCES>
-    class SingleProducerSequencer : public AbstractSequencer<T, RING_BUFFER_SIZE, NUMBER_GATING_SEQUENCES> {
-        alignas(CACHE_LINE_SIZE) const char padding1[CACHE_LINE_SIZE];
-        int64_t nextValue{Sequencer::INITIAL_CURSOR_VALUE}; // seq gần nhất đã được publisher claim
-        int64_t cachedValue{Sequencer::INITIAL_CURSOR_VALUE}; // seq nhỏ nhất đã được các gatingSequences xử lý
-        const char padding2[CACHE_LINE_SIZE - sizeof(std::atomic<int64_t>) * 2];
-        const char padding3[CACHE_LINE_SIZE];
+    class SingleProducerSequencer : public Sequencer {
 
+        // quản lý các sequence đã được publish
+        alignas(CACHE_LINE_SIZE) Sequence cursor{INITIAL_CURSOR_VALUE};
+
+        // seq gần nhất đã được publisher claim
+        int64_t latest_claimed_sequence{Sequencer::INITIAL_CURSOR_VALUE};
+        const char padding1[CACHE_LINE_SIZE - sizeof(int64_t)] = {};
+        const char padding2[CACHE_LINE_SIZE] = {};
+
+        RingBuffer<T, RING_BUFFER_SIZE> &ringBuffer;
+        SequenceGroupForSingleThread<NUMBER_GATING_SEQUENCES> gating_sequences;
 
         bool sameThread() {
             return ProducerThreadAssertion::isSameThreadProducingTo(this);
         }
 
     public:
-        explicit SingleProducerSequencer(const RingBuffer<T, RING_BUFFER_SIZE> &ringBuffer) : AbstractSequencer<T, RING_BUFFER_SIZE, NUMBER_GATING_SEQUENCES>(ringBuffer) {
+        explicit SingleProducerSequencer(const RingBuffer<T, RING_BUFFER_SIZE> &ringBuffer) : ringBuffer(ringBuffer) {
         }
 
+        void addGatingSequences(const std::initializer_list<std::reference_wrapper<Sequence> > sequences) override {
+            this->gating_sequences.setSequences(sequences);
+        }
 
         int64_t next() override {
             return this->next(1);
@@ -39,36 +49,25 @@ namespace disruptor {
                 throw std::invalid_argument("n must be > 0 and < bufferSize");
             }
 
-            const int64_t localNextValue = this->nextValue;
+            const int64_t localNextValue = this->latest_claimed_sequence;
             const int64_t nextSequence = localNextValue + n;
             const int64_t wrapPoint = nextSequence - bufferSize;
-            const int64_t cachedGatingSequence = this->cachedValue;
 
-            if (cachedGatingSequence < wrapPoint) {
+            if (this->gating_sequences.get_cache() < wrapPoint) {
                 // chờ cho tới khi consumer xử lý xong để có chỗ trống ghi dữ liệu
-                int64_t minSequence;
-                while (wrapPoint > (minSequence = Util::getMinimumSequence(gatingSequences, localNextValue))) {
-                    // TODO: Use waitStrategy to spin?
+                while (wrapPoint > this->gating_sequences.get()) {
                     std::this_thread::sleep_for(std::chrono::nanoseconds(1));
                 }
-                this->cachedValue = minSequence;
             }
 
-            this->nextValue = nextSequence;
+            this->latest_claimed_sequence = nextSequence;
 
             return true;
         }
 
 
-        int64_t remainingCapacity() const override {
-            const long consumed = Util::getMinimumSequence(this->gatingSequences, nextValue);
-            const long produced = this->nextValue;
-            return this->ringBuffer.getBufferSize() - (produced - consumed);
-        }
-
-
         void claim(const int64_t sequence) override {
-            this->nextValue = sequence;
+            this->latest_claimed_sequence = sequence;
         }
 
 

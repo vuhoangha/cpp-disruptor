@@ -33,7 +33,7 @@ namespace disruptor {
 
 
         template<size_t N>
-        static int64_t getMinimumSequenceWithCache(const std::array<Sequence *, N>& sequences, const int64_t cached_min_sequence = INT64_MIN) {
+        static int64_t getMinimumSequenceWithCache(const std::array<Sequence *, N> &sequences, const int64_t cached_min_sequence = INT64_MIN) {
             int64_t minimumSequence = INT64_MAX;
             for (const auto &sequence: sequences) {
                 const int64_t value = sequence->get();

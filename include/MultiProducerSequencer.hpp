@@ -1,6 +1,7 @@
 #pragma once
 
 #include "AbstractSequencer.hpp"
+#include "SequenceGroupForMultiThread.hpp"
 
 /**
  * cursor: vị trí cao nhất đã được producer claim nhưng chưa chắc đã được publish
@@ -8,36 +9,37 @@
  */
 namespace disruptor {
     template<typename T, size_t RING_BUFFER_SIZE, size_t NUMBER_GATING_SEQUENCES>
-    class MultiProducerSequencer : public AbstractSequencer<T, RING_BUFFER_SIZE, NUMBER_GATING_SEQUENCES> {
-        // seq nhỏ nhất đã được các gatingSequences xử lý
-        alignas(CACHE_LINE_SIZE) Sequence cachedValue{Sequence::INITIAL_VALUE};
+    class MultiProducerSequencer : public Sequencer {
+        // quản lý các sequence đã được publish
+        alignas(CACHE_LINE_SIZE) Sequence cursor{INITIAL_CURSOR_VALUE};
 
-        alignas(CACHE_LINE_SIZE) const char padding1[CACHE_LINE_SIZE];
+        alignas(CACHE_LINE_SIZE) const char padding1[CACHE_LINE_SIZE] = {};
         // chính là buffer_size - 1. Dùng để tính toán vị trí trong ring buffer tương tự phép chía lấy dư
         const int32_t indexMask;
         // dùng để tính xem sequence hiện tại đã quay được bao nhiêu vòng bằng dịch phải indexShift bit. Ví dụ ring_buffer = 16 thì indexShift = 4 --> sequence=89 --> 89>>5=5 --> sequence này đã quay được 5 vòng
         const int32_t indexShift;
-        const char padding2[CACHE_LINE_SIZE - sizeof(std::atomic<int32_t>) * 2];
-        const char padding3[CACHE_LINE_SIZE];
+        const char padding2[CACHE_LINE_SIZE - sizeof(std::atomic<int32_t>) * 2] = {};
+        const char padding3[CACHE_LINE_SIZE] = {};
 
         // mảng chứa số vòng quay của từng vị trí trong RingBuffer. Nó sẽ báo hiệu sequence này được publish hay chưa
         // vì cần tính chất atomic + memory barriers nên Sequence hoàn toàn đáp ứng
         std::array<Sequence, RING_BUFFER_SIZE> availableBuffer;
-        char padding4[CACHE_LINE_SIZE * 2];
+        const char padding4[CACHE_LINE_SIZE * 2] = {};
+
+        RingBuffer<T, RING_BUFFER_SIZE> &ringBuffer;
+        SequenceGroupForMultiThread<NUMBER_GATING_SEQUENCES> gating_sequences;
 
     public:
         explicit MultiProducerSequencer(const RingBuffer<T, RING_BUFFER_SIZE> &ringBuffer)
-            : AbstractSequencer<T, RING_BUFFER_SIZE, NUMBER_GATING_SEQUENCES>(ringBuffer), indexMask(ringBuffer.getBufferSize() - 1), indexShift(Util::log2(ringBuffer.getBufferSize())) {
+            : indexMask(ringBuffer.getBufferSize() - 1), indexShift(Util::log2(ringBuffer.getBufferSize())), ringBuffer(ringBuffer) {
             for (auto &seq: availableBuffer) {
                 seq.set(-1);
             }
         }
 
-
         void claim(const int64_t sequence) override {
             this->cursor.set(sequence);
         }
-
 
         int64_t next() override {
             return next(1);
@@ -54,26 +56,15 @@ namespace disruptor {
             const int64_t currentSequence = this->cursor.getAndAddRelax(n);
             const int64_t nextSequence = currentSequence + n;
             const int64_t wrapPoint = nextSequence - bufferSize;
-            const int64_t cachedGatingSequence = this->cachedValue.getRelax();
+            const int64_t cachedGatingSequence = this->gating_sequences.get_cache();
 
             if (cachedGatingSequence < wrapPoint) {
-                int64_t gatingSequence;
-                while ((gatingSequence = Util::getMinimumSequence(this->gatingSequences, cachedGatingSequence)) < wrapPoint) {
-                    // TODO: Use waitStrategy to spin?
+                while (this->gating_sequences.get() < wrapPoint) {
                     std::this_thread::sleep_for(std::chrono::nanoseconds(1));
                 }
-                this->cachedValue.setRelax(gatingSequence);
             }
 
             return nextSequence;
-        }
-
-
-        int64_t remainingCapacity() const override {
-            const int64_t currentSequence = this->cursor.getRelax();
-            const int64_t consumed = Util::getMinimumSequence(this->gatingSequences, currentSequence);
-            const int64_t produced = currentSequence;
-            return this->ringBuffer.getBufferSize() - (produced - consumed);
         }
 
 

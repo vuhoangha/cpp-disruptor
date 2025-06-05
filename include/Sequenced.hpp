@@ -16,13 +16,6 @@ namespace disruptor
 
 
         /**
-         * Get the remaining capacity for this sequencer.
-         *
-         * @return The number of slots remaining.
-         */
-        virtual int64_t remainingCapacity() const = 0;
-
-        /**
          * Claim the next event in sequence for publishing.
          *
          * @return the claimed sequence value
