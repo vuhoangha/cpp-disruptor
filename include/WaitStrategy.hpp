@@ -1,12 +1,13 @@
 #pragma once
 
-#include "Sequence.hpp"
 #include "SequenceBarrier.hpp"
+#include "SequenceGroupForSingleThread.hpp"
 
 namespace disruptor {
     /**
      * Strategy employed for making EventProcessors wait on a cursor Sequence.
      */
+    template<size_t NUMBER_DEPENDENT_SEQUENCES>
     class WaitStrategy {
     public:
         virtual ~WaitStrategy() = default;
@@ -19,7 +20,7 @@ namespace disruptor {
          * handles this case and will signal a timeout if required.
          *
          * @param sequence          to be waited on.
-         * @param cursor            the main or dependent sequences
+         * @param dependent_sequences            the main or dependent sequences
          * @param barrier           the processor is waiting on.
          * @return the sequence that is available which may be greater than the requested sequence.
          * @throws AlertException if the status of the Disruptor has changed.
@@ -27,7 +28,7 @@ namespace disruptor {
          */
         [[nodiscard]] virtual int64_t waitFor(
             const int64_t sequence,
-            Sequence &cursor,
+            SequenceGroupForSingleThread<NUMBER_DEPENDENT_SEQUENCES> &dependent_sequences,
             const SequenceBarrier &barrier) = 0;
 
         /**

@@ -1,30 +1,11 @@
-/*
- * Copyright 2011 LMAX Ltd.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 #pragma once
 
 #include <thread>
 #include <string>
 #include "WaitStrategy.hpp"
-#include "Sequence.hpp"
 #include "SequenceBarrier.hpp"
 
-namespace disruptor
-{
-
+namespace disruptor {
     /**
      * Yielding strategy that uses a Thread.yield() for EventProcessors waiting on a barrier
      * after an initially spinning.
@@ -32,21 +13,17 @@ namespace disruptor
      * This strategy will use 100% CPU, but will more readily give up the CPU than a busy spin strategy if other threads
      * require CPU resource.
      */
-    class YieldingWaitStrategy : public WaitStrategy
-    {
+    template<size_t NUMBER_DEPENDENT_SEQUENCES>
+    class YieldingWaitStrategy final : public WaitStrategy<NUMBER_DEPENDENT_SEQUENCES> {
     private:
         static constexpr int SPIN_TRIES = 100;
 
-        inline int applyWaitMethod(SequenceBarrier &barrier, const int counter)
-        {
+        static int applyWaitMethod(const SequenceBarrier &barrier, const int counter) {
             barrier.checkAlert();
 
-            if (0 == counter)
-            {
+            if (0 == counter) {
                 std::this_thread::yield();
-            }
-            else
-            {
+            } else {
                 return counter - 1;
             }
 
@@ -55,14 +32,12 @@ namespace disruptor
 
     public:
         [[nodiscard]] int64_t waitFor(const int64_t sequence,
-                                      const Sequence &cursor,
-                                      SequenceBarrier &barrier) override
-        {
+                                      SequenceGroupForSingleThread<NUMBER_DEPENDENT_SEQUENCES> &dependent_sequences,
+                                      const SequenceBarrier &barrier) override {
             int64_t availableSequence;
             int counter = SPIN_TRIES;
 
-            while ((availableSequence = cursor.get()) < sequence)
-            {
+            while ((availableSequence = dependent_sequences.get()) < sequence) {
                 counter = applyWaitMethod(barrier, counter);
             }
 
@@ -70,10 +45,8 @@ namespace disruptor
         }
 
 
-        [[nodiscard]] std::string toString() const noexcept override
-        {
+        [[nodiscard]] std::string toString() const noexcept override {
             return "YieldingWaitStrategy";
         }
     };
-
 } // namespace disruptor

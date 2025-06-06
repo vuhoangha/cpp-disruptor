@@ -3,7 +3,6 @@
 #include <thread>
 #include <string>
 #include "WaitStrategy.hpp"
-#include "Sequence.hpp"
 #include "SequenceBarrier.hpp"
 
 namespace disruptor {
@@ -13,14 +12,15 @@ namespace disruptor {
      * This strategy will use CPU resource to avoid syscalls which can introduce latency jitter.  It is best
      * used when threads can be bound to specific CPU cores.
      */
-    class BusySpinWaitStrategy final : public WaitStrategy {
+    template<size_t NUMBER_DEPENDENT_SEQUENCES>
+    class BusySpinWaitStrategy final : public WaitStrategy<NUMBER_DEPENDENT_SEQUENCES> {
     public:
         [[nodiscard]] int64_t waitFor(const int64_t sequence,
-                                      Sequence &cursor,
+                                      SequenceGroupForSingleThread<NUMBER_DEPENDENT_SEQUENCES> &dependent_sequences,
                                       const SequenceBarrier &barrier) override {
             int64_t availableSequence;
 
-            while ((availableSequence = cursor.get()) < sequence) {
+            while ((availableSequence = dependent_sequences.get()) < sequence) {
                 barrier.checkAlert();
                 std::this_thread::yield();
             }

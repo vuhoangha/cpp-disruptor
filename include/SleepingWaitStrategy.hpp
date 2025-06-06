@@ -4,12 +4,9 @@
 #include <chrono>
 #include <string>
 #include "WaitStrategy.hpp"
-#include "Sequence.hpp"
 #include "SequenceBarrier.hpp"
 
-namespace disruptor
-{
-
+namespace disruptor {
     /**
      * Sleeping strategy that initially spins, then uses a Thread.yield(), and
      * eventually sleep (std::this_thread::sleep_for) for the minimum
@@ -21,8 +18,8 @@ namespace disruptor
      * on the producing thread as it will not need signal any conditional variables
      * to wake up the event handling thread.
      */
-    class SleepingWaitStrategy : public WaitStrategy
-    {
+    template<size_t NUMBER_DEPENDENT_SEQUENCES>
+    class SleepingWaitStrategy final : public WaitStrategy<NUMBER_DEPENDENT_SEQUENCES> {
     private:
         static constexpr int SPIN_THRESHOLD = 100;
         static constexpr int DEFAULT_RETRIES = 200;
@@ -31,21 +28,15 @@ namespace disruptor
         const int retries;
         const int64_t sleepTimeNs;
 
-        int applyWaitMethod(SequenceBarrier &barrier, const int counter)
-        {
+        int applyWaitMethod(const SequenceBarrier &barrier, const int counter) const {
             barrier.checkAlert();
 
-            if (counter > SPIN_THRESHOLD)
-            {
+            if (counter > SPIN_THRESHOLD) {
                 return counter - 1;
-            }
-            else if (counter > 0)
-            {
+            } else if (counter > 0) {
                 std::this_thread::yield();
                 return counter - 1;
-            }
-            else
-            {
+            } else {
                 std::this_thread::sleep_for(std::chrono::nanoseconds(sleepTimeNs));
             }
 
@@ -56,34 +47,32 @@ namespace disruptor
         /**
          * Provides a sleeping wait strategy with the default retry and sleep settings
          */
-        SleepingWaitStrategy() : SleepingWaitStrategy(DEFAULT_RETRIES, DEFAULT_SLEEP)
-        {
+        SleepingWaitStrategy() : SleepingWaitStrategy(DEFAULT_RETRIES, DEFAULT_SLEEP) {
         }
+
 
         /**
          * @param retries How many times the strategy should retry before sleeping
          */
-        explicit SleepingWaitStrategy(const int retries) : SleepingWaitStrategy(retries, DEFAULT_SLEEP)
-        {
+        explicit SleepingWaitStrategy(const int retries) : SleepingWaitStrategy(retries, DEFAULT_SLEEP) {
         }
+
 
         /**
          * @param retries How many times the strategy should retry before sleeping
          * @param sleepTimeNs How long the strategy should sleep, in nanoseconds
          */
-        SleepingWaitStrategy(const int retries, const int64_t sleepTimeNs) : retries(retries), sleepTimeNs(sleepTimeNs)
-        {
+        SleepingWaitStrategy(const int retries, const int64_t sleepTimeNs) : retries(retries), sleepTimeNs(sleepTimeNs) {
         }
 
+
         [[nodiscard]] int64_t waitFor(const int64_t sequence,
-                                      const Sequence &cursor,
-                                      SequenceBarrier &barrier) override
-        {
+                                      SequenceGroupForSingleThread<NUMBER_DEPENDENT_SEQUENCES> &dependent_sequences,
+                                      const SequenceBarrier &barrier) override {
             int64_t availableSequence;
             int counter = retries;
 
-            while ((availableSequence = cursor.get()) < sequence)
-            {
+            while ((availableSequence = dependent_sequences.get()) < sequence) {
                 counter = applyWaitMethod(barrier, counter);
             }
 
@@ -91,10 +80,8 @@ namespace disruptor
         }
 
 
-        [[nodiscard]] std::string toString() const noexcept override
-        {
+        [[nodiscard]] std::string toString() const noexcept override {
             return "SleepingWaitStrategy";
         }
     };
-
 } // namespace disruptor
