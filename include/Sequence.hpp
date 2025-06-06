@@ -48,7 +48,7 @@ namespace disruptor {
          *
          * @return The current value of the sequence.
          */
-        [[nodiscard]] virtual inline int64_t get() {
+        [[nodiscard]] virtual inline int64_t get() const {
             // Use acquire semantics to ensure all subsequent reads see previous writes
             return value.load(std::memory_order_acquire);
         }
@@ -70,19 +70,6 @@ namespace disruptor {
 
         virtual inline void setRelax(const int64_t newValue) {
             value.store(newValue, std::memory_order_relaxed);
-        }
-
-        /**
-         * Performs a volatile write of this sequence. The intent is
-         * a Store/Store barrier between this write and any previous
-         * write and a Store/Load barrier between this write and any
-         * subsequent volatile read.
-         *
-         * @param newValue The new value for the sequence.
-         */
-        [[nodiscard]] virtual inline void setVolatile(int64_t newValue) {
-            // Use sequential consistency for full fence semantics
-            value.store(newValue, std::memory_order_seq_cst);
         }
 
         /**

@@ -46,15 +46,6 @@ namespace disruptor {
         }
 
 
-        static std::vector<Sequence> getSequencesFor(const std::vector<EventProcessor> &processors) {
-            std::vector<Sequence> sequences;
-            for (const auto &processor: processors) {
-                sequences.push_back(processor.getSequence());
-            }
-            return sequences;
-        }
-
-
         static int log2(const int value) {
             if (value < 1) {
                 throw std::invalid_argument("value must be a positive number");

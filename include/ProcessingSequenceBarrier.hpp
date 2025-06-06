@@ -4,7 +4,6 @@
 #include "SequenceBarrier.hpp"
 #include "Sequence.hpp"
 #include "Sequencer.hpp"
-#include "FixedSequenceGroup.hpp"
 #include "AlertException.hpp"
 #include "WaitStrategyType.hpp"
 #include "BusySpinWaitStrategy.hpp"

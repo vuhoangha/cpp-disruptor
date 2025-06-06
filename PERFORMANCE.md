@@ -17,5 +17,4 @@
 - Phần false sharing cần chú ý nghiêm ngặt kiến trúc phần cứng và phiên bản C++. Ví dụ như trong Java có thể gặp tình trạng là với môi trường khác nhau sẽ ko hoạt động như ý
     + https://github.com/LMAX-Exchange/disruptor/issues/231
     + https://mechanical-sympathy.blogspot.com/2011/08/false-sharing-java-7.html
-- [Ý tưởng] Ở phần lấy min sequence trong FixedSequenceGroup, thử nghiệm cách đọc với memory order relax, nếu có giá trị hợp lệ mới đọc lại biến này với memory order release.
 - [Ý tưởng] cũng trong vòng lặp đọc biến sequence mong chờ với relax, dùng câu lệnh if để ràng buộc, chống CPU tự sắp xếp câu lệnh.
