@@ -1,13 +1,10 @@
 #pragma once
 
-#include <cstdint>
-#include <vector>
-#include "Cursored.hpp"
 #include "Sequenced.hpp"
 #include "Sequence.hpp"
 
 namespace disruptor {
-    class Sequencer : public Cursored, public Sequenced {
+    class Sequencer : public Sequenced {
     public:
         static constexpr int64_t INITIAL_CURSOR_VALUE = Sequence::INITIAL_VALUE;
 
@@ -26,7 +23,7 @@ namespace disruptor {
          * @param sequence of the buffer to check
          * @return true if the sequence is available for use, false if not
          */
-        virtual bool isAvailable(int64_t sequence) = 0;
+        virtual bool isAvailable(int64_t sequence) const = 0;
 
 
         virtual void addGatingSequences(const std::initializer_list<std::reference_wrapper<Sequence> > sequences) = 0;

@@ -4,7 +4,6 @@
 #include "Common.hpp"
 #include "Util.hpp"
 #include <unordered_map>
-#include "InsufficientCapacityException.hpp"
 #include <cassert>
 
 #include "SequenceGroupForSingleThread.hpp"
@@ -12,7 +11,6 @@
 namespace disruptor {
     template<typename T, size_t RING_BUFFER_SIZE, size_t NUMBER_GATING_SEQUENCES>
     class SingleProducerSequencer : public Sequencer {
-
         // quản lý các sequence đã được publish
         alignas(CACHE_LINE_SIZE) Sequence cursor{INITIAL_CURSOR_VALUE};
 
@@ -21,7 +19,7 @@ namespace disruptor {
         const char padding1[CACHE_LINE_SIZE - sizeof(int64_t)] = {};
         const char padding2[CACHE_LINE_SIZE] = {};
 
-        RingBuffer<T, RING_BUFFER_SIZE> &ringBuffer;
+        const RingBuffer<T, RING_BUFFER_SIZE> &ringBuffer;
         SequenceGroupForSingleThread<NUMBER_GATING_SEQUENCES> gating_sequences;
 
         bool sameThread() {
@@ -41,7 +39,7 @@ namespace disruptor {
         }
 
 
-        int64_t next(const int n) override {
+        int64_t next(const int64_t n) override {
             assert(sameThread() && "Accessed by two threads - use ProducerType.MULTI!");
             const int32_t bufferSize = this->ringBuffer.getBufferSize();
 
@@ -62,7 +60,7 @@ namespace disruptor {
 
             this->latest_claimed_sequence = nextSequence;
 
-            return true;
+            return nextSequence;
         }
 
 
@@ -81,7 +79,7 @@ namespace disruptor {
         }
 
 
-        bool isAvailable(const int64_t sequence) override {
+        bool isAvailable(const int64_t sequence) const override {
             const int64_t currentSequence = this->cursor.get();
             return sequence <= currentSequence && sequence > currentSequence - this->ringBuffer.getBufferSize();
         }
@@ -89,8 +87,13 @@ namespace disruptor {
 
         // trong các sequence barrier thì thường "nextSequence" là sequence mà barrier đang chờ, availableSequence là sequence đã được publish hoặc các dependency consmer xử lý xong
         // trong hàm waitFor của SequenceBarrier thì nextSequence <= availableSequence thì mới gọi tới đây
-        int64_t getHighestPublishedSequence(const int64_t nextSequence, const int64_t availableSequence) const override {
+        [[nodiscard]] int64_t getHighestPublishedSequence(const int64_t nextSequence, const int64_t availableSequence) const override {
             return availableSequence;
+        }
+
+
+        [[nodiscard]] Sequence& getCursor() {
+            return cursor;
         }
 
 

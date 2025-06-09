@@ -9,7 +9,6 @@
 #include <condition_variable>
 #include <mutex>
 #include "Sequence.hpp"
-#include "EventProcessor.hpp"
 
 namespace disruptor {
     class Util {

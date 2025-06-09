@@ -2,7 +2,6 @@
 
 #include <string>
 #include <cassert>
-#include <stdexcept>
 #include <format>
 #include <atomic>
 
@@ -10,7 +9,7 @@
 
 namespace disruptor {
     template<size_t NUMBER_DEPENDENT_SEQUENCES>
-    class SequenceGroupForMultiThread final : public Sequence {
+    class SequenceGroupForMultiThread final {
     private:
         // cache lại min_sequence để tăng performance khi get_minimum_sequence
         alignas(CACHE_LINE_SIZE) const char padding1[CACHE_LINE_SIZE] = {};
@@ -40,7 +39,7 @@ namespace disruptor {
             }
         }
 
-        [[nodiscard]] int64_t get() override {
+        [[nodiscard]] int64_t get() {
             const int64_t min_sequence = this->cached_min_sequence.load(std::memory_order_relaxed);
             const int64_t new_min_sequence = get_minimum_sequence(min_sequence);
             if (min_sequence < new_min_sequence) {
@@ -65,27 +64,11 @@ namespace disruptor {
         [[nodiscard]] int64_t get_cache() const {
             return this->cached_min_sequence.load(std::memory_order_relaxed);
         }
-
-        [[noreturn]] void set(int64_t value) override {
-            throw std::runtime_error("SequenceGroupForMultiThread does not support set operation");
-        }
-
-        [[noreturn]] bool compareAndSet(int64_t expectedValue, int64_t newValue) override {
-            throw std::runtime_error("SequenceGroupForMultiThread does not support compareAndSet operation");
-        }
-
-        [[noreturn]] int64_t incrementAndGet() override {
-            throw std::runtime_error("SequenceGroupForMultiThread does not support incrementAndGet operation");
-        }
-
-        [[noreturn]] int64_t addAndGet(int64_t increment) override {
-            throw std::runtime_error("SequenceGroupForMultiThread does not support addAndGet operation");
-        }
     };
 
 
     template<>
-    class SequenceGroupForMultiThread<1> final : public Sequence {
+    class SequenceGroupForMultiThread<1> final {
     private:
         alignas(CACHE_LINE_SIZE) const char padding1[CACHE_LINE_SIZE] = {};
         Sequence *sequence;
@@ -105,24 +88,12 @@ namespace disruptor {
             sequence = &dependentSequences.begin()->get();
         }
 
-        [[nodiscard]] inline int64_t get() override {
+        [[nodiscard]] inline int64_t get() const {
             return sequence->get();
         }
 
-        [[noreturn]] void set(int64_t value) override {
-            throw std::runtime_error("SequenceGroupForMultiThread does not support set operation");
-        }
-
-        [[noreturn]] bool compareAndSet(int64_t expectedValue, int64_t newValue) override {
-            throw std::runtime_error("SequenceGroupForMultiThread does not support compareAndSet operation");
-        }
-
-        [[noreturn]] int64_t incrementAndGet() override {
-            throw std::runtime_error("SequenceGroupForMultiThread does not support incrementAndGet operation");
-        }
-
-        [[noreturn]] int64_t addAndGet(int64_t increment) override {
-            throw std::runtime_error("SequenceGroupForMultiThread does not support addAndGet operation");
+        [[nodiscard]] int64_t get_cache() const {
+            return sequence->getRelax();
         }
     };
 }

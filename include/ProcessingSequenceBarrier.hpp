@@ -35,11 +35,22 @@ namespace disruptor {
 
     template<WaitStrategyType T, size_t NUMBER_DEPENDENT_SEQUENCES>
     class ProcessingSequenceBarrier final : public SequenceBarrier {
+        alignas(CACHE_LINE_SIZE) const char padding1[CACHE_LINE_SIZE] = {};
         using Strategy = typename WaitStrategySelector<T, NUMBER_DEPENDENT_SEQUENCES>::type;
         Strategy waitStrategy;
+        // lắng nghe trực tiếp sự kiện từ publisher chứ ko phải từ 1 dependent processor nào khác
+        const bool direct_publisher_event_listener;
+        const char padding2[CACHE_LINE_SIZE * 2] = {};
+
+        alignas(CACHE_LINE_SIZE) SequenceGroupForSingleThread<NUMBER_DEPENDENT_SEQUENCES> dependent_sequences;
+
+        alignas(CACHE_LINE_SIZE) const char padding3[CACHE_LINE_SIZE] = {};
         bool alerted;
+        const char padding4[CACHE_LINE_SIZE - sizeof(bool)] = {};
+        const char padding5[CACHE_LINE_SIZE] = {};
+
         Sequencer &sequencer;
-        SequenceGroupForSingleThread<NUMBER_DEPENDENT_SEQUENCES> dependent_sequences;
+
 
         bool sameThread() {
             return SequenceBarrierThreadAssertion::isSameThread(this);
@@ -47,12 +58,13 @@ namespace disruptor {
 
     public:
         ProcessingSequenceBarrier(
-            Sequencer &sequencer,
-            const WaitStrategyType waitStrategyType,
-            const std::initializer_list<std::reference_wrapper<Sequence> > dependent_sequences)
-            : alerted(false),
-              sequencer(sequencer),
-              dependent_sequences(dependent_sequences) {
+            const bool direct_publisher_event_listener,
+            std::initializer_list<std::reference_wrapper<Sequence> > dependent_sequences,
+            Sequencer &sequencer)
+            : direct_publisher_event_listener(direct_publisher_event_listener),
+              dependent_sequences(dependent_sequences),
+              alerted(false),
+              sequencer(sequencer) {
         }
 
 
@@ -65,16 +77,21 @@ namespace disruptor {
                 return availableSequence;
             }
 
-            return sequencer.getHighestPublishedSequence(sequence, availableSequence);
+            if (direct_publisher_event_listener) {
+                return sequencer.getHighestPublishedSequence(sequence, availableSequence);
+            } else {
+                // nếu đã dependent vào processor khác thì khi processor kia xử lý xong thì ta xử lý luôn, vì chắc chắn event đã được publish rồi
+                return availableSequence;
+            }
         }
 
 
-        int64_t getCursor() const override {
+        [[nodiscard]] int64_t getCursor() override {
             return this->dependent_sequences.get();
         }
 
 
-        bool isAlerted() const override {
+        [[nodiscard]] bool isAlerted() const override {
             return alerted;
         }
 

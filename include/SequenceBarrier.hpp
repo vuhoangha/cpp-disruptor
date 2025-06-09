@@ -26,7 +26,7 @@ namespace disruptor
          *
          * @return value of the cursor for entries that have been published.
          */
-        [[nodiscard]] virtual int64_t getCursor() const = 0;
+        [[nodiscard]] virtual int64_t getCursor() = 0;
 
         /**
          * The current alert status for the barrier.

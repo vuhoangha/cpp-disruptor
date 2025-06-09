@@ -9,16 +9,16 @@
  */
 namespace disruptor {
     template<typename T, size_t RING_BUFFER_SIZE, size_t NUMBER_GATING_SEQUENCES>
-    class MultiProducerSequencer : public Sequencer {
-        // quản lý các sequence đã được publish
+    class MultiProducerSequencer final : public Sequencer {
+        // quản lý các sequence đã được publisher claim. Seq ở đây tăng ko đồng nghĩa với việc seq đã được publish đâu nhé.
         alignas(CACHE_LINE_SIZE) Sequence cursor{INITIAL_CURSOR_VALUE};
 
         alignas(CACHE_LINE_SIZE) const char padding1[CACHE_LINE_SIZE] = {};
         // chính là buffer_size - 1. Dùng để tính toán vị trí trong ring buffer tương tự phép chía lấy dư
-        const int32_t indexMask;
+        const int64_t indexMask;
         // dùng để tính xem sequence hiện tại đã quay được bao nhiêu vòng bằng dịch phải indexShift bit. Ví dụ ring_buffer = 16 thì indexShift = 4 --> sequence=89 --> 89>>5=5 --> sequence này đã quay được 5 vòng
-        const int32_t indexShift;
-        const char padding2[CACHE_LINE_SIZE - sizeof(std::atomic<int32_t>) * 2] = {};
+        const int64_t indexShift;
+        const char padding2[CACHE_LINE_SIZE - sizeof(std::atomic<int64_t>) * 2] = {};
         const char padding3[CACHE_LINE_SIZE] = {};
 
         // mảng chứa số vòng quay của từng vị trí trong RingBuffer. Nó sẽ báo hiệu sequence này được publish hay chưa
@@ -26,7 +26,7 @@ namespace disruptor {
         std::array<Sequence, RING_BUFFER_SIZE> availableBuffer;
         const char padding4[CACHE_LINE_SIZE * 2] = {};
 
-        RingBuffer<T, RING_BUFFER_SIZE> &ringBuffer;
+        const RingBuffer<T, RING_BUFFER_SIZE> &ringBuffer;
         SequenceGroupForMultiThread<NUMBER_GATING_SEQUENCES> gating_sequences;
 
     public:
@@ -35,6 +35,10 @@ namespace disruptor {
             for (auto &seq: availableBuffer) {
                 seq.set(-1);
             }
+        }
+
+        void addGatingSequences(const std::initializer_list<std::reference_wrapper<Sequence> > sequences) override {
+            this->gating_sequences.setSequences(sequences);
         }
 
         void claim(const int64_t sequence) override {
@@ -46,8 +50,8 @@ namespace disruptor {
         }
 
 
-        int64_t next(const int32_t n) override {
-            const int32_t bufferSize = this->ringBuffer.getBufferSize();
+        int64_t next(const int64_t n) override {
+            const int64_t bufferSize = this->ringBuffer.getBufferSize();
 
             if (n < 1 || n > bufferSize) {
                 throw std::invalid_argument("n must be > 0 and < bufferSize");
@@ -83,24 +87,29 @@ namespace disruptor {
         void setAvailable(const int64_t sequence) {
             const int32_t index = calculateIndex(sequence);
             const int64_t flag = calculateAvailabilityFlag(sequence);
-            availableBuffer[index].store(flag, std::memory_order_release);
+            availableBuffer[index].set(flag);
         }
 
 
-        int64_t calculateAvailabilityFlag(const int64_t sequence) const {
+        [[nodiscard]] int64_t calculateAvailabilityFlag(const int64_t sequence) const {
             return sequence >> indexShift;
         }
 
 
-        int32_t calculateIndex(const int64_t sequence) const {
-            return static_cast<int>(sequence) & indexMask;
+        [[nodiscard]] int32_t calculateIndex(const int64_t sequence) const {
+            return sequence & indexMask;
         }
 
 
-        bool isAvailable(const int64_t sequence) override {
+        [[nodiscard]] bool isAvailable(const int64_t sequence) const override {
             const int32_t index = calculateIndex(sequence);
             const int64_t flag = calculateAvailabilityFlag(sequence);
-            return availableBuffer[index].load(std::memory_order_acquire) == flag;
+            return availableBuffer[index].get() == flag;
+        }
+
+
+        [[nodiscard]] Sequence &getCursor() {
+            return cursor;
         }
 
 
@@ -108,7 +117,7 @@ namespace disruptor {
          * lấy sequence cao nhất đã được publish để consumer xử lý
          * vì trong môi trường multi producer thì có thể sequence 10 đã được producer A publish còn sequence 9 do producer B đảm nhiệm vẫn đang xử lý
          */
-        int64_t getHighestPublishedSequence(const int64_t lowerBound, const int64_t availableSequence) const override {
+        [[nodiscard]] int64_t getHighestPublishedSequence(const int64_t lowerBound, const int64_t availableSequence) const override {
             for (int64_t sequence = lowerBound; sequence <= availableSequence; ++sequence) {
                 if (!isAvailable(sequence)) {
                     return sequence - 1;

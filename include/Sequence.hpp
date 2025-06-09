@@ -48,12 +48,12 @@ namespace disruptor {
          *
          * @return The current value of the sequence.
          */
-        [[nodiscard]] virtual inline int64_t get() const {
+        [[nodiscard]] virtual int64_t get() const {
             // Use acquire semantics to ensure all subsequent reads see previous writes
             return value.load(std::memory_order_acquire);
         }
 
-        [[nodiscard]] virtual inline int64_t getRelax() {
+        [[nodiscard]] virtual int64_t getRelax() {
             return value.load(std::memory_order_relaxed);
         }
 
@@ -63,7 +63,7 @@ namespace disruptor {
          *
          * @param newValue The new value for the sequence.
          */
-        virtual inline void set(int64_t newValue) {
+        virtual void set(int64_t newValue) {
             // Use release semantics to ensure all previous writes are visible
             value.store(newValue, std::memory_order_release);
         }

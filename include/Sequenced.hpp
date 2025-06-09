@@ -40,26 +40,7 @@ namespace disruptor
          * @param n the number of sequences to claim
          * @return the highest claimed sequence value
          */
-        virtual int64_t next(int n) = 0;
-
-        /**
-         * Attempt to claim the next event in sequence for publishing. Will return the
-         * number of the slot if there is at least requiredCapacity slots available.
-         *
-         * @return the claimed sequence value
-         * @throws InsufficientCapacityException thrown if there is no space available in the ring buffer.
-         */
-        virtual int64_t tryNext() = 0;
-
-        /**
-         * Attempt to claim the next n events in sequence for publishing. Will return the
-         * highest numbered slot if there is at least requiredCapacity slots available.
-         *
-         * @param n the number of sequences to claim
-         * @return the claimed sequence value
-         * @throws InsufficientCapacityException thrown if there is no space available in the ring buffer.
-         */
-        virtual int64_t tryNext(int n) = 0;
+        virtual int64_t next(int64_t n) = 0;
 
         /**
          * Publishes a sequence. Call when the event has been filled.

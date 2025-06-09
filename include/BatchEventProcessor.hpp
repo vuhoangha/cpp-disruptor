@@ -2,15 +2,14 @@
 #include <functional>
 #include <iostream>
 
-#include "EventProcessor.hpp"
 #include "Sequence.hpp"
 #include "SequenceBarrier.hpp"
 #include "AlertException.hpp"
 #include "RingBuffer.hpp"
 
 namespace disruptor {
-    template<typename T>
-    class BatchEventProcessor final : public EventProcessor {
+    template<typename T, int64_t BUFFER_SIZE>
+    class BatchEventProcessor final {
         Sequence sequence;
         SequenceBarrier &sequenceBarrier;
 
@@ -19,20 +18,20 @@ namespace disruptor {
         // Biến lưu trữ function object
         EventHandler eventHandler;
 
-        RingBuffer<T, size_t> &ringBuffer;
+        RingBuffer<T, BUFFER_SIZE> &ringBuffer;
 
     public:
-        explicit BatchEventProcessor(SequenceBarrier &barrier, EventHandler handler, RingBuffer<T, size_t> &ringBuffer
+        explicit BatchEventProcessor(SequenceBarrier &barrier, EventHandler handler, RingBuffer<T, BUFFER_SIZE> &ringBuffer
         ) : sequenceBarrier(barrier), eventHandler(handler), ringBuffer(ringBuffer) {
         }
 
 
-        Sequence getSequence() const override {
-            return this->sequence.get();
+        [[nodiscard]] Sequence& getCursor() {
+            return this->sequence;
         }
 
 
-        void halt() override {
+        void halt() const {
             this->sequenceBarrier.alert();
         }
 
