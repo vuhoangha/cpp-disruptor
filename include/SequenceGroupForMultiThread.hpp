@@ -13,8 +13,8 @@ namespace disruptor {
     private:
         // cache lại min_sequence để tăng performance khi get_minimum_sequence
         alignas(CACHE_LINE_SIZE) const char padding1[CACHE_LINE_SIZE] = {};
-        std::atomic<int64_t> cached_min_sequence{INITIAL_VALUE_SEQUENCE};
-        const char padding2[CACHE_LINE_SIZE - sizeof(std::atomic<int64_t>)] = {};
+        std::atomic<size_t> cached_min_sequence{0};
+        const char padding2[CACHE_LINE_SIZE - sizeof(std::atomic<size_t>)] = {};
         const char padding3[CACHE_LINE_SIZE] = {};
 
         std::array<Sequence *, NUMBER_DEPENDENT_SEQUENCES> sequences; // lưu array con trỏ tới các sequence
@@ -39,19 +39,19 @@ namespace disruptor {
             }
         }
 
-        [[nodiscard]] int64_t get() {
-            const int64_t min_sequence = this->cached_min_sequence.load(std::memory_order_relaxed);
-            const int64_t new_min_sequence = get_minimum_sequence(min_sequence);
+        [[nodiscard]] size_t get() {
+            const size_t min_sequence = this->cached_min_sequence.load(std::memory_order_relaxed);
+            const size_t new_min_sequence = get_minimum_sequence(min_sequence);
             if (min_sequence < new_min_sequence) {
                 this->cached_min_sequence.store(new_min_sequence, std::memory_order_relaxed);
             }
             return new_min_sequence;
         }
 
-        [[nodiscard]] int64_t get_minimum_sequence(const int64_t cached_sequence) {
-            int64_t minimumSequence = INT64_MAX;
+        [[nodiscard]] size_t get_minimum_sequence(const size_t cached_sequence) {
+            size_t minimumSequence = INT64_MAX;
             for (const auto &sequence: this->sequences) {
-                const int64_t value = sequence->get();
+                const size_t value = sequence->get();
                 if (value <= cached_sequence) {
                     return cached_sequence;
                 }
@@ -61,7 +61,7 @@ namespace disruptor {
         }
 
         // trả ra giá trị cache gần nhất
-        [[nodiscard]] int64_t get_cache() const {
+        [[nodiscard]] size_t get_cache() const {
             return this->cached_min_sequence.load(std::memory_order_relaxed);
         }
     };
@@ -88,11 +88,11 @@ namespace disruptor {
             sequence = &dependentSequences.begin()->get();
         }
 
-        [[nodiscard]] inline int64_t get() const {
+        [[nodiscard]] inline size_t get() const {
             return sequence->get();
         }
 
-        [[nodiscard]] int64_t get_cache() const {
+        [[nodiscard]] size_t get_cache() const {
             return sequence->getRelax();
         }
     };

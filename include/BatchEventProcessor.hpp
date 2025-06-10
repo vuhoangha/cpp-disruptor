@@ -6,15 +6,16 @@
 #include "SequenceBarrier.hpp"
 #include "AlertException.hpp"
 #include "RingBuffer.hpp"
+#include "Util.hpp"
 
 namespace disruptor {
-    template<typename T, int64_t BUFFER_SIZE>
+    template<typename T, size_t BUFFER_SIZE>
     class BatchEventProcessor final {
         Sequence sequence;
         SequenceBarrier &sequenceBarrier;
 
         // Định nghĩa kiểu cho function object
-        using EventHandler = std::function<void(T &, int64_t, bool)>;
+        using EventHandler = std::function<void(T &, size_t, bool)>;
         // Biến lưu trữ function object
         EventHandler eventHandler;
 
@@ -22,11 +23,14 @@ namespace disruptor {
 
     public:
         explicit BatchEventProcessor(SequenceBarrier &barrier, EventHandler handler, RingBuffer<T, BUFFER_SIZE> &ringBuffer
-        ) : sequenceBarrier(barrier), eventHandler(handler), ringBuffer(ringBuffer) {
+        ) : sequence(Util::calculate_initial_value_sequence(ringBuffer.getBufferSize())),
+            sequenceBarrier(barrier),
+            eventHandler(handler),
+            ringBuffer(ringBuffer) {
         }
 
 
-        [[nodiscard]] Sequence& getCursor() {
+        [[nodiscard]] Sequence &getCursor() {
             return this->sequence;
         }
 
@@ -43,11 +47,11 @@ namespace disruptor {
 
 
         void processEvents() {
-            int64_t nextSequence = sequence.get() + 1;
+            size_t nextSequence = sequence.get() + 1;
 
             while (true) {
                 try {
-                    const int64_t availableSequence = this->sequenceBarrier.waitFor(nextSequence);
+                    const size_t availableSequence = this->sequenceBarrier.waitFor(nextSequence);
                     while (nextSequence <= availableSequence) {
                         T &event = this->ringBuffer.get(nextSequence);
                         this->eventHandler(event, nextSequence, nextSequence == availableSequence);

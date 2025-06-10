@@ -12,7 +12,7 @@
 
 
 void run_single_sequencer() {
-    constexpr int64_t ring_buffer_size = 4;
+    constexpr size_t ring_buffer_size = 4;
     disruptor::RingBuffer<disruptor::Event, ring_buffer_size> ring_buffer([]() { return disruptor::Event(); });
 
     disruptor::SingleProducerSequencer<disruptor::Event, ring_buffer_size, 1> sequencer(ring_buffer);
@@ -20,7 +20,7 @@ void run_single_sequencer() {
 
 
     // Tạo đối tượng BatchEventProcessor
-    auto eventHandler_1 = [](disruptor::Event &event, int64_t sequence, bool endOfBatch) {
+    auto eventHandler_1 = [](disruptor::Event &event, size_t sequence, bool endOfBatch) {
         std::cout << std::format("{:%F %T}", std::chrono::system_clock::now()) << "Process A - event on sequence: " << sequence << " - value: " << event.getValue();
         if (endOfBatch) {
             std::cout << " (end of batch)";
@@ -37,7 +37,7 @@ void run_single_sequencer() {
 
 
     // Tạo đối tượng BatchEventProcessor
-    auto eventHandler_2 = [](disruptor::Event &event, int64_t sequence, bool endOfBatch) {
+    auto eventHandler_2 = [](disruptor::Event &event, size_t sequence, bool endOfBatch) {
         std::cout << std::format("{:%F %T}", std::chrono::system_clock::now()) << "Process B - event on sequence: " << sequence << " - value: " << event.getValue();
         if (endOfBatch) {
             std::cout << " (end of batch)";
@@ -56,7 +56,7 @@ void run_single_sequencer() {
 
 
     while (true) {
-        const int64_t claimed_sequence = sequencer.next();
+        const size_t claimed_sequence = sequencer.next();
         disruptor::Event &event = ring_buffer.get(claimed_sequence);
         event.setValue(claimed_sequence);
         sequencer.publish(claimed_sequence);
@@ -67,7 +67,7 @@ void run_single_sequencer() {
 
 
 void run_multiple_sequencer() {
-    constexpr int64_t ring_buffer_size = 4;
+    constexpr size_t ring_buffer_size = 4;
     disruptor::RingBuffer<disruptor::Event, ring_buffer_size> ring_buffer([]() { return disruptor::Event(); });
 
     disruptor::MultiProducerSequencer<disruptor::Event, ring_buffer_size, 1> sequencer(ring_buffer);
@@ -77,7 +77,7 @@ void run_multiple_sequencer() {
     disruptor::ProcessingSequenceBarrier<WaitStrategyType::BUSY_SPIN, NUMBER_DEPENDENT_SEQUENCES> sequence_barrier(true, {cursor_sequencer}, sequencer);
 
     // Tạo một hàm xử lý sự kiện
-    auto eventHandler = [](disruptor::Event &event, const int64_t sequence, const bool endOfBatch) {
+    auto eventHandler = [](disruptor::Event &event, const size_t sequence, const bool endOfBatch) {
         std::cout << "Process event on sequence: " << sequence << " - value: " << event.getValue();
         if (endOfBatch) {
             std::cout << " (end of batch)";
@@ -101,7 +101,7 @@ void run_multiple_sequencer() {
 
     std::thread producer_1_thread([&sequencer, &ring_buffer]() {
         while (true) {
-            const int64_t claimed_sequence = sequencer.next();
+            const size_t claimed_sequence = sequencer.next();
             disruptor::Event &event = ring_buffer.get(claimed_sequence);
             event.setValue(claimed_sequence);
             sequencer.publish(claimed_sequence);
@@ -112,7 +112,7 @@ void run_multiple_sequencer() {
 
     std::thread producer_2_thread([&sequencer, &ring_buffer]() {
         while (true) {
-            const int64_t claimed_sequence = sequencer.next();
+            const size_t claimed_sequence = sequencer.next();
             disruptor::Event &event = ring_buffer.get(claimed_sequence);
             event.setValue(claimed_sequence);
             sequencer.publish(claimed_sequence);

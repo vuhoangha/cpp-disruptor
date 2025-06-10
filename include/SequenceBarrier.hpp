@@ -19,14 +19,14 @@ namespace disruptor
          * @throws AlertException if a status change has occurred for the Disruptor
          * @throws TimeoutException if a timeout occurs while waiting for the supplied sequence.
          */
-        [[nodiscard]] virtual int64_t waitFor(int64_t sequence) = 0;
+        [[nodiscard]] virtual size_t waitFor(size_t sequence) = 0;
 
         /**
          * Get the current cursor value that can be read.
          *
          * @return value of the cursor for entries that have been published.
          */
-        [[nodiscard]] virtual int64_t getCursor() = 0;
+        [[nodiscard]] virtual size_t getCursor() = 0;
 
         /**
          * The current alert status for the barrier.

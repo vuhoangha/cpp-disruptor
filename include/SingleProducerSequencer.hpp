@@ -10,13 +10,13 @@
 
 namespace disruptor {
     template<typename T, size_t RING_BUFFER_SIZE, size_t NUMBER_GATING_SEQUENCES>
-    class SingleProducerSequencer : public Sequencer {
+    class SingleProducerSequencer final : public Sequencer {
         // quản lý các sequence đã được publish
-        alignas(CACHE_LINE_SIZE) Sequence cursor{INITIAL_VALUE_SEQUENCE};
+        alignas(CACHE_LINE_SIZE) Sequence cursor{Util::calculate_initial_value_sequence(RING_BUFFER_SIZE)};
 
         // seq gần nhất đã được publisher claim
-        int64_t latest_claimed_sequence{INITIAL_VALUE_SEQUENCE};
-        const char padding1[CACHE_LINE_SIZE - sizeof(int64_t)] = {};
+        size_t latest_claimed_sequence{Util::calculate_initial_value_sequence(RING_BUFFER_SIZE)};
+        const char padding1[CACHE_LINE_SIZE - sizeof(size_t)] = {};
         const char padding2[CACHE_LINE_SIZE] = {};
 
         const RingBuffer<T, RING_BUFFER_SIZE> &ringBuffer;
@@ -34,22 +34,22 @@ namespace disruptor {
             this->gating_sequences.setSequences(sequences);
         }
 
-        int64_t next() override {
+        size_t next() override {
             return this->next(1);
         }
 
 
-        int64_t next(const int64_t n) override {
+        size_t next(const size_t n) override {
             assert(sameThread() && "Accessed by two threads - use ProducerType.MULTI!");
-            const int32_t bufferSize = this->ringBuffer.getBufferSize();
+            const size_t bufferSize = this->ringBuffer.getBufferSize();
 
             if (n < 1 || n > bufferSize) {
                 throw std::invalid_argument("n must be > 0 and < bufferSize");
             }
 
-            const int64_t localNextValue = this->latest_claimed_sequence;
-            const int64_t nextSequence = localNextValue + n;
-            const int64_t wrapPoint = nextSequence - bufferSize;
+            const size_t localNextValue = this->latest_claimed_sequence;
+            const size_t nextSequence = localNextValue + n;
+            const size_t wrapPoint = nextSequence - bufferSize;
 
             if (this->gating_sequences.get_cache() < wrapPoint) {
                 // chờ cho tới khi consumer xử lý xong để có chỗ trống ghi dữ liệu
@@ -64,35 +64,35 @@ namespace disruptor {
         }
 
 
-        void claim(const int64_t sequence) override {
+        void claim(const size_t sequence) override {
             this->latest_claimed_sequence = sequence;
         }
 
 
-        void publish(const int64_t sequence) override {
+        void publish(const size_t sequence) override {
             this->cursor.set(sequence);
         }
 
 
-        void publish(const int64_t lo, const int64_t hi) override {
+        void publish(const size_t lo, const size_t hi) override {
             this->publish(hi);
         }
 
 
-        bool isAvailable(const int64_t sequence) const override {
-            const int64_t currentSequence = this->cursor.get();
+        [[nodiscard]] bool isAvailable(const size_t sequence) const override {
+            const size_t currentSequence = this->cursor.get();
             return sequence <= currentSequence && sequence > currentSequence - this->ringBuffer.getBufferSize();
         }
 
 
         // trong các sequence barrier thì thường "nextSequence" là sequence mà barrier đang chờ, availableSequence là sequence đã được publish hoặc các dependency consmer xử lý xong
         // trong hàm waitFor của SequenceBarrier thì nextSequence <= availableSequence thì mới gọi tới đây
-        [[nodiscard]] int64_t getHighestPublishedSequence(const int64_t nextSequence, const int64_t availableSequence) const override {
+        [[nodiscard]] size_t getHighestPublishedSequence(const size_t nextSequence, const size_t availableSequence) const override {
             return availableSequence;
         }
 
 
-        [[nodiscard]] Sequence& getCursor() {
+        [[nodiscard]] Sequence &getCursor() {
             return cursor;
         }
 

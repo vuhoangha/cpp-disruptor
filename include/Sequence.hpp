@@ -26,7 +26,7 @@ namespace disruptor {
         /**
          * Create a sequence initialised to -1.
          */
-        Sequence() : Sequence(INITIAL_VALUE_SEQUENCE) {
+        Sequence() : Sequence(0) {
         }
 
         /**

@@ -21,10 +21,10 @@ namespace disruptor {
         }
 
 
-        static int64_t getMinimumSequence(const std::vector<std::shared_ptr<Sequence> > &sequences, int64_t minimum = INT64_MAX) {
-            int64_t minimumSequence = minimum;
+        static size_t getMinimumSequence(const std::vector<std::shared_ptr<Sequence> > &sequences, size_t minimum = INT64_MAX) {
+            size_t minimumSequence = minimum;
             for (const auto &sequence: sequences) {
-                int64_t value = sequence->get();
+                size_t value = sequence->get();
                 minimumSequence = std::min(minimumSequence, value);
             }
             return minimumSequence;
@@ -32,10 +32,10 @@ namespace disruptor {
 
 
         template<size_t N>
-        static int64_t getMinimumSequenceWithCache(const std::array<Sequence *, N> &sequences, const int64_t cached_min_sequence = INT64_MIN) {
-            int64_t minimumSequence = INT64_MAX;
+        static size_t getMinimumSequenceWithCache(const std::array<Sequence *, N> &sequences, const size_t cached_min_sequence = INT64_MIN) {
+            size_t minimumSequence = INT64_MAX;
             for (const auto &sequence: sequences) {
-                const int64_t value = sequence->get();
+                const size_t value = sequence->get();
                 if (value <= cached_min_sequence) {
                     return cached_min_sequence;
                 }
@@ -50,20 +50,6 @@ namespace disruptor {
                 throw std::invalid_argument("value must be a positive number");
             }
             return 31 - __builtin_clz(value);
-        }
-
-
-        static int64_t awaitNanos(std::mutex &mutex, int64_t timeoutNanos) {
-            std::unique_lock<std::mutex> lock(mutex);
-            auto start = std::chrono::steady_clock::now();
-            auto duration = std::chrono::nanoseconds(timeoutNanos);
-            std::cv_status status = std::cv_status::no_timeout;
-            if (duration.count() > 0) {
-                status = std::cv_status::timeout;
-                std::this_thread::sleep_for(duration);
-            }
-            auto end = std::chrono::steady_clock::now();
-            return std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
         }
 
 
@@ -119,6 +105,12 @@ namespace disruptor {
 
             // kiểm tra atomic size_t lockfree
             Util::check_size_t_lock_free();
+        }
+
+
+        // khởi tạo sequence với điều kiện sequence - buffer_size phải >= 0. Đang cố để mọi biến theo kiểu size_t tránh việc phải ép kiểu
+        static size_t calculate_initial_value_sequence(const size_t buffer_size) {
+            return buffer_size;
         }
     };
 }

@@ -12,7 +12,7 @@ namespace disruptor {
          *
          * @param sequence The sequence to initialise to.
          */
-        virtual void claim(int64_t sequence) = 0;
+        virtual void claim(size_t sequence) = 0;
 
         /**
          * Confirms if a sequence is published and the event is available for use; non-blocking.
@@ -20,7 +20,7 @@ namespace disruptor {
          * @param sequence of the buffer to check
          * @return true if the sequence is available for use, false if not
          */
-        virtual bool isAvailable(int64_t sequence) const = 0;
+        virtual bool isAvailable(size_t sequence) const = 0;
 
 
         virtual void addGatingSequences(const std::initializer_list<std::reference_wrapper<Sequence> > sequences) = 0;
@@ -37,6 +37,6 @@ namespace disruptor {
          * @param availableSequence The sequence to scan to.
          * @return The highest value that can be safely read, will be at least nextSequence - 1.
          */
-        virtual int64_t getHighestPublishedSequence(const int64_t nextSequence, const int64_t availableSequence) const = 0;
+        virtual size_t getHighestPublishedSequence(const size_t nextSequence, const size_t availableSequence) const = 0;
     };
 }

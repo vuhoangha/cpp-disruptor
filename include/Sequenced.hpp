@@ -20,7 +20,7 @@ namespace disruptor
          *
          * @return the claimed sequence value
          */
-        virtual int64_t next() = 0;
+        virtual size_t next() = 0;
 
         /**
          * Chờ và claim n vị trí tiếp theo để producer sử dụng.
@@ -30,9 +30,9 @@ namespace disruptor
          *
          * Example:
          * int n = 10;
-         * int64_t hi = sequencer.next(n);
-         * int64_t lo = hi - (n - 1);
-         * for (int64_t sequence = lo; sequence <= hi; sequence++) {
+         * size_t hi = sequencer.next(n);
+         * size_t lo = hi - (n - 1);
+         * for (size_t sequence = lo; sequence <= hi; sequence++) {
          *     // Do work.
          * }
          * sequencer.publish(lo, hi);
@@ -40,14 +40,14 @@ namespace disruptor
          * @param n the number of sequences to claim
          * @return the highest claimed sequence value
          */
-        virtual int64_t next(int64_t n) = 0;
+        virtual size_t next(size_t n) = 0;
 
         /**
          * Publishes a sequence. Call when the event has been filled.
          *
          * @param sequence the sequence to be published.
          */
-        virtual void publish(int64_t sequence) = 0;
+        virtual void publish(size_t sequence) = 0;
 
         /**
          * Batch publish sequences. Called when all of the events have been filled.
@@ -55,7 +55,7 @@ namespace disruptor
          * @param lo first sequence number to publish
          * @param hi last sequence number to publish
          */
-        virtual void publish(int64_t lo, int64_t hi) = 0;
+        virtual void publish(size_t lo, size_t hi) = 0;
     };
 
 }

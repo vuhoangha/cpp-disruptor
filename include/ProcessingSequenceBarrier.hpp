@@ -68,11 +68,11 @@ namespace disruptor {
         }
 
 
-        int64_t waitFor(int64_t sequence) override {
+        size_t waitFor(size_t sequence) override {
             assert(sameThread() && "Accessed by two threads");
             checkAlert();
 
-            const int64_t availableSequence = waitStrategy.waitFor(sequence, this->dependent_sequences, *this);
+            const size_t availableSequence = waitStrategy.waitFor(sequence, this->dependent_sequences, *this);
             if (availableSequence < sequence) {
                 return availableSequence;
             }
@@ -86,7 +86,7 @@ namespace disruptor {
         }
 
 
-        [[nodiscard]] int64_t getCursor() override {
+        [[nodiscard]] size_t getCursor() override {
             return this->dependent_sequences.get();
         }
 

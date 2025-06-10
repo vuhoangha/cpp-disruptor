@@ -23,10 +23,10 @@ namespace disruptor {
     private:
         static constexpr int SPIN_THRESHOLD = 100;
         static constexpr int DEFAULT_RETRIES = 200;
-        static constexpr int64_t DEFAULT_SLEEP = 100;
+        static constexpr size_t DEFAULT_SLEEP = 100;
 
         const int retries;
-        const int64_t sleepTimeNs;
+        const size_t sleepTimeNs;
 
         int applyWaitMethod(const SequenceBarrier &barrier, const int counter) const {
             barrier.checkAlert();
@@ -62,14 +62,14 @@ namespace disruptor {
          * @param retries How many times the strategy should retry before sleeping
          * @param sleepTimeNs How long the strategy should sleep, in nanoseconds
          */
-        SleepingWaitStrategy(const int retries, const int64_t sleepTimeNs) : retries(retries), sleepTimeNs(sleepTimeNs) {
+        SleepingWaitStrategy(const int retries, const size_t sleepTimeNs) : retries(retries), sleepTimeNs(sleepTimeNs) {
         }
 
 
-        [[nodiscard]] int64_t waitFor(const int64_t sequence,
-                                      SequenceGroupForSingleThread<NUMBER_DEPENDENT_SEQUENCES> &dependent_sequences,
-                                      const SequenceBarrier &barrier) override {
-            int64_t availableSequence;
+        [[nodiscard]] size_t waitFor(const size_t sequence,
+                                     SequenceGroupForSingleThread<NUMBER_DEPENDENT_SEQUENCES> &dependent_sequences,
+                                     const SequenceBarrier &barrier) override {
+            size_t availableSequence;
             int counter = retries;
 
             while ((availableSequence = dependent_sequences.get()) < sequence) {

@@ -21,7 +21,7 @@ namespace disruptor
          *
          * @return current cursor value
          */
-        virtual int64_t getCursor() = 0;
+        virtual size_t getCursor() = 0;
     };
 
 }

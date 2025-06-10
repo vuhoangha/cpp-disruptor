@@ -26,8 +26,8 @@ namespace disruptor {
          * @throws AlertException if the status of the Disruptor has changed.
          * @throws TimeoutException if a timeout occurs before waiting completes (not used by some strategies)
          */
-        [[nodiscard]] virtual int64_t waitFor(
-            const int64_t sequence,
+        [[nodiscard]] virtual size_t waitFor(
+            size_t sequence,
             SequenceGroupForSingleThread<NUMBER_DEPENDENT_SEQUENCES> &dependent_sequences,
             const SequenceBarrier &barrier) = 0;
 

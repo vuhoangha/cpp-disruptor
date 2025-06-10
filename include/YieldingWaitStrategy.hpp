@@ -31,10 +31,10 @@ namespace disruptor {
         }
 
     public:
-        [[nodiscard]] int64_t waitFor(const int64_t sequence,
+        [[nodiscard]] size_t waitFor(const size_t sequence,
                                       SequenceGroupForSingleThread<NUMBER_DEPENDENT_SEQUENCES> &dependent_sequences,
                                       const SequenceBarrier &barrier) override {
-            int64_t availableSequence;
+            size_t availableSequence;
             int counter = SPIN_TRIES;
 
             while ((availableSequence = dependent_sequences.get()) < sequence) {
