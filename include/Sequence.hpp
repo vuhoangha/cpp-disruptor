@@ -23,14 +23,12 @@ namespace disruptor {
         const char padding3[CACHE_LINE_SIZE] = {};
 
     public:
-        static constexpr int64_t INITIAL_VALUE = -1L;
-
         virtual ~Sequence() = default;
 
         /**
          * Create a sequence initialised to -1.
          */
-        inline Sequence() : Sequence(INITIAL_VALUE) {
+        inline Sequence() : Sequence(INITIAL_VALUE_SEQUENCE) {
         }
 
         /**

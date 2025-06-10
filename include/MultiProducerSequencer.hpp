@@ -12,7 +12,7 @@ namespace disruptor {
     template<typename T, size_t RING_BUFFER_SIZE, size_t NUMBER_GATING_SEQUENCES>
     class MultiProducerSequencer final : public Sequencer {
         // quản lý các sequence đã được publisher claim. Seq ở đây tăng ko đồng nghĩa với việc seq đã được publish đâu nhé.
-        alignas(CACHE_LINE_SIZE) Sequence cursor{INITIAL_CURSOR_VALUE};
+        alignas(CACHE_LINE_SIZE) Sequence cursor{INITIAL_VALUE_SEQUENCE};
 
         alignas(CACHE_LINE_SIZE) const char padding1[CACHE_LINE_SIZE] = {};
         // chính là buffer_size - 1. Dùng để tính toán vị trí trong ring buffer tương tự phép chía lấy dư

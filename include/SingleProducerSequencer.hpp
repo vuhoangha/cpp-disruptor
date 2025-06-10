@@ -12,10 +12,10 @@ namespace disruptor {
     template<typename T, size_t RING_BUFFER_SIZE, size_t NUMBER_GATING_SEQUENCES>
     class SingleProducerSequencer : public Sequencer {
         // quản lý các sequence đã được publish
-        alignas(CACHE_LINE_SIZE) Sequence cursor{INITIAL_CURSOR_VALUE};
+        alignas(CACHE_LINE_SIZE) Sequence cursor{INITIAL_VALUE_SEQUENCE};
 
         // seq gần nhất đã được publisher claim
-        int64_t latest_claimed_sequence{Sequencer::INITIAL_CURSOR_VALUE};
+        int64_t latest_claimed_sequence{INITIAL_VALUE_SEQUENCE};
         const char padding1[CACHE_LINE_SIZE - sizeof(int64_t)] = {};
         const char padding2[CACHE_LINE_SIZE] = {};
 

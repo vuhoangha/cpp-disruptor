@@ -13,7 +13,7 @@ namespace disruptor {
     private:
         // cache lại min_sequence để tăng performance khi get_minimum_sequence
         alignas(CACHE_LINE_SIZE) const char padding1[CACHE_LINE_SIZE] = {};
-        std::atomic<int64_t> cached_min_sequence{Sequence::INITIAL_VALUE};
+        std::atomic<int64_t> cached_min_sequence{INITIAL_VALUE_SEQUENCE};
         const char padding2[CACHE_LINE_SIZE - sizeof(std::atomic<int64_t>)] = {};
         const char padding3[CACHE_LINE_SIZE] = {};
 

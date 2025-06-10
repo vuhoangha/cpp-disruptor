@@ -97,5 +97,28 @@ namespace disruptor {
                 std::cerr << "Điều này có thể gây ra vấn đề về hiệu suất hoặc tính đúng đắn của chương trình." << std::endl;
             }
         }
+
+
+        static void check_size_t_lock_free() {
+            const std::atomic<std::size_t> as;
+            if (!as.is_lock_free()) {
+                std::cerr << "CẢNH BÁO: size_t ko support lock free" << std::endl;
+            }
+        }
+
+
+        // kiểm tra điều kiện môi trường có đáp ứng để chương trình chạy ổn định và hiệu quả không
+        static void require_for_system_run_stable() {
+            // kiểm tra cache line
+            if (Util::get_cache_line_size() != 64) {
+                std::cerr << "CẢNH BÁO: CACHE_LINE ko phải 64 bytes" << std::endl;
+            }
+
+            // kiểm tra kiểu size_t
+            Util::check_size_t_size();
+
+            // kiểm tra atomic size_t lockfree
+            Util::check_size_t_lock_free();
+        }
     };
 }

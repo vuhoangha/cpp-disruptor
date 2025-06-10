@@ -6,9 +6,6 @@
 namespace disruptor {
     class Sequencer : public Sequenced {
     public:
-        static constexpr int64_t INITIAL_CURSOR_VALUE = Sequence::INITIAL_VALUE;
-
-
         /**
          * Claim a specific sequence. Only used if initialising the ring buffer to
          * a specific value.
