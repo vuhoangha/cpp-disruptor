@@ -88,5 +88,14 @@ namespace disruptor {
             return 64; // Default to 64 bytes
 #endif
         }
+
+
+        static void check_size_t_size() {
+            if constexpr (sizeof(size_t) != 8) {
+                std::cerr << "CẢNH BÁO: Kích thước của size_t là " << sizeof(size_t)
+                        << " bytes, không phải 8 bytes như mong đợi!" << std::endl;
+                std::cerr << "Điều này có thể gây ra vấn đề về hiệu suất hoặc tính đúng đắn của chương trình." << std::endl;
+            }
+        }
     };
 }

@@ -127,6 +127,14 @@ void run_multiple_sequencer() {
 
 
 int main() {
+    // kiểm tra cache line
+    if (disruptor::Util::get_cache_line_size() != 64) {
+        std::cerr << "CẢNH BÁO: CACHE_LINE ko phải 64 bytes" << std::endl;
+    }
+    // kiểm tra kiểu size_t
+    disruptor::Util::check_size_t_size();
+
+
     run_single_sequencer();
 
     return 0;
