@@ -86,7 +86,7 @@ namespace disruptor {
 
 
         void setAvailable(const int64_t sequence) {
-            const int32_t index = calculateIndex(sequence);
+            const int64_t index = calculateIndex(sequence);
             const int64_t flag = calculateAvailabilityFlag(sequence);
             availableBuffer[index].set(flag);
         }
@@ -97,13 +97,13 @@ namespace disruptor {
         }
 
 
-        [[nodiscard]] int32_t calculateIndex(const int64_t sequence) const {
+        [[nodiscard]] int64_t calculateIndex(const int64_t sequence) const {
             return sequence & indexMask;
         }
 
 
         [[nodiscard]] bool isAvailable(const int64_t sequence) const override {
-            const int32_t index = calculateIndex(sequence);
+            const int64_t index = calculateIndex(sequence);
             const int64_t flag = calculateAvailabilityFlag(sequence);
             return availableBuffer[index].get() == flag;
         }
