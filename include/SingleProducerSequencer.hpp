@@ -1,6 +1,6 @@
 #pragma once
 
-#include "AbstractSequencer.hpp"
+#include "Sequencer.hpp"
 #include "Common.hpp"
 #include "Util.hpp"
 #include <unordered_map>

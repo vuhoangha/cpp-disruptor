@@ -3,6 +3,7 @@
 #include "BatchEventProcessor.hpp"
 #include "event.hpp"
 #include "MultiProducerSequencer.hpp"
+#include "ProcessingSequenceBarrier.hpp"
 #include "RingBuffer.hpp"
 #include "SingleProducerSequencer.hpp"
 #include "../include/Sequence.hpp"

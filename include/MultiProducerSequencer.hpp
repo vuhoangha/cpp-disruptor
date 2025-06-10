@@ -1,7 +1,8 @@
 #pragma once
 
-#include "AbstractSequencer.hpp"
 #include "SequenceGroupForMultiThread.hpp"
+#include "Sequencer.hpp"
+#include "Util.hpp"
 
 /**
  * cursor: vị trí cao nhất đã được producer claim nhưng chưa chắc đã được publish
