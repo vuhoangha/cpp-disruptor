@@ -16,19 +16,17 @@ namespace disruptor {
      * Also attempts to be more efficient with regards to false
      * sharing by adding padding around the atomic field.
      */
-    class Sequence {
+    class Sequence final {
         alignas(CACHE_LINE_SIZE) const char padding1[CACHE_LINE_SIZE] = {};
-        std::atomic<int64_t> value;
-        const char padding2[CACHE_LINE_SIZE - sizeof(std::atomic<int64_t>)] = {};
+        std::atomic<size_t> value;
+        const char padding2[CACHE_LINE_SIZE - sizeof(std::atomic<size_t>)] = {};
         const char padding3[CACHE_LINE_SIZE] = {};
 
     public:
-        virtual ~Sequence() = default;
-
         /**
          * Create a sequence initialised to -1.
          */
-        inline Sequence() : Sequence(INITIAL_VALUE_SEQUENCE) {
+        Sequence() : Sequence(INITIAL_VALUE_SEQUENCE) {
         }
 
         /**
@@ -36,7 +34,7 @@ namespace disruptor {
          *
          * @param initialValue The initial value for this sequence.
          */
-        inline explicit Sequence(const int64_t initialValue) {
+        explicit Sequence(const size_t initialValue) {
             // Use release semantics to ensure all previous writes are visible
             value.store(initialValue, std::memory_order_release);
         }
@@ -46,12 +44,12 @@ namespace disruptor {
          *
          * @return The current value of the sequence.
          */
-        [[nodiscard]] virtual int64_t get() const {
+        [[nodiscard]] size_t get() const {
             // Use acquire semantics to ensure all subsequent reads see previous writes
             return value.load(std::memory_order_acquire);
         }
 
-        [[nodiscard]] virtual int64_t getRelax() {
+        [[nodiscard]] size_t getRelax() const {
             return value.load(std::memory_order_relaxed);
         }
 
@@ -61,12 +59,12 @@ namespace disruptor {
          *
          * @param newValue The new value for the sequence.
          */
-        virtual void set(int64_t newValue) {
+        void set(const size_t newValue) {
             // Use release semantics to ensure all previous writes are visible
             value.store(newValue, std::memory_order_release);
         }
 
-        virtual inline void setRelax(const int64_t newValue) {
+        void setRelax(const size_t newValue) {
             value.store(newValue, std::memory_order_relaxed);
         }
 
@@ -77,7 +75,7 @@ namespace disruptor {
          * @param newValue The value to update to.
          * @return true if the operation succeeds, false otherwise.
          */
-        [[nodiscard]] virtual inline bool compareAndSet(int64_t expectedValue, int64_t newValue) {
+        [[nodiscard]] bool compareAndSet(size_t expectedValue, const size_t newValue) {
             // Use sequential consistency for full fence semantics
             return value.compare_exchange_strong(expectedValue, newValue,
                                                  std::memory_order_seq_cst);
@@ -88,7 +86,7 @@ namespace disruptor {
          *
          * @return The value after the increment
          */
-        [[nodiscard]] virtual inline int64_t incrementAndGet() {
+        [[nodiscard]] size_t incrementAndGet() {
             return addAndGet(1);
         }
 
@@ -98,7 +96,7 @@ namespace disruptor {
          * @param increment The value to add to the sequence.
          * @return The value after the increment.
          */
-        [[nodiscard]] virtual inline int64_t addAndGet(int64_t increment) {
+        [[nodiscard]] size_t addAndGet(const size_t increment) {
             // Use sequential consistency for full fence semantics
             return value.fetch_add(increment, std::memory_order_seq_cst) + increment;
         }
@@ -109,17 +107,17 @@ namespace disruptor {
          * @param increment The value to add to the sequence.
          * @return the value before increment
          */
-        [[nodiscard]] virtual inline int64_t getAndAddRelax(const int64_t increment) {
+        [[nodiscard]] size_t getAndAddRelax(const size_t increment) {
             return value.fetch_add(increment, std::memory_order_relaxed);
         }
 
         /**
          * Convert the sequence to a string.
          */
-        [[nodiscard]] virtual inline std::string toString() const {
+        [[nodiscard]] std::string toString() const {
             return std::to_string(get());
         }
 
         friend std::ostream &operator<<(std::ostream &os, const Sequence &sequence);
     };
-} // namespace disruptor
+}
