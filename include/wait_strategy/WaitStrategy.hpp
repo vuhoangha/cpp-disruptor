@@ -1,7 +1,7 @@
 #pragma once
 
-#include "SequenceBarrier.hpp"
-#include "SequenceGroupForSingleThread.hpp"
+#include "../barriers/SequenceBarrier.hpp"
+#include "../sequence/SequenceGroupForSingleThread.hpp"
 
 namespace disruptor {
     /**

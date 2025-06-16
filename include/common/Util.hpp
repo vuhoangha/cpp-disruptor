@@ -8,7 +8,7 @@
 #include <chrono>
 #include <condition_variable>
 #include <mutex>
-#include "Sequence.hpp"
+#include "../sequence/Sequence.hpp"
 
 namespace disruptor {
     class Util {

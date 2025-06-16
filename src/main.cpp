@@ -1,14 +1,14 @@
 #include <iostream>
 
-#include "BatchEventProcessor.hpp"
+#include "../include/processor/BatchEventProcessor.hpp"
 #include "event.hpp"
-#include "MultiProducerSequencer.hpp"
-#include "ProcessingSequenceBarrier.hpp"
-#include "RingBuffer.hpp"
-#include "SingleProducerSequencer.hpp"
-#include "../include/Sequence.hpp"
-#include "../include/Util.hpp"
-#include "../include/WaitStrategyType.hpp"
+#include "../include/sequencer/MultiProducerSequencer.hpp"
+#include "../include/barriers/ProcessingSequenceBarrier.hpp"
+#include "../include/ring_buffer/RingBuffer.hpp"
+#include "../include/sequencer/SingleProducerSequencer.hpp"
+#include "../include/sequence/Sequence.hpp"
+#include "../include/common/Util.hpp"
+#include "../include/wait_strategy/WaitStrategyType.hpp"
 
 
 void run_single_sequencer() {

@@ -32,6 +32,14 @@ add_executable(main ${SOURCES})
 # Include directories
 target_include_directories(main PRIVATE 
     ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/include/barriers
+    ${CMAKE_SOURCE_DIR}/include/common
+    ${CMAKE_SOURCE_DIR}/include/exception
+    ${CMAKE_SOURCE_DIR}/include/processor
+    ${CMAKE_SOURCE_DIR}/include/ring_buffer
+    ${CMAKE_SOURCE_DIR}/include/sequence
+    ${CMAKE_SOURCE_DIR}/include/sequencer
+    ${CMAKE_SOURCE_DIR}/include/wait_strategy
 )
 
 # Test sources

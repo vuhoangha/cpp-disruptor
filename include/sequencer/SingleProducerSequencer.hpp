@@ -1,12 +1,12 @@
 #pragma once
 
 #include "Sequencer.hpp"
-#include "Common.hpp"
-#include "Util.hpp"
+#include "../common/Common.hpp"
+#include "../common/Util.hpp"
 #include <unordered_map>
 #include <cassert>
 
-#include "SequenceGroupForSingleThread.hpp"
+#include "../sequence/SequenceGroupForSingleThread.hpp"
 
 namespace disruptor {
     template<typename T, size_t RING_BUFFER_SIZE, size_t NUMBER_GATING_SEQUENCES>

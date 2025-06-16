@@ -4,7 +4,7 @@
 #include <chrono>
 #include <string>
 #include "WaitStrategy.hpp"
-#include "SequenceBarrier.hpp"
+#include "../barriers/SequenceBarrier.hpp"
 
 namespace disruptor {
     /**

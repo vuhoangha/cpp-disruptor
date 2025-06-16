@@ -2,14 +2,14 @@
 
 #include <unordered_map>
 #include "SequenceBarrier.hpp"
-#include "Sequence.hpp"
-#include "Sequencer.hpp"
-#include "AlertException.hpp"
-#include "WaitStrategyType.hpp"
-#include "BusySpinWaitStrategy.hpp"
-#include "SequenceGroupForSingleThread.hpp"
-#include "SleepingWaitStrategy.hpp"
-#include "YieldingWaitStrategy.hpp"
+#include "../sequence/Sequence.hpp"
+#include "../sequencer/Sequencer.hpp"
+#include "../exception/AlertException.hpp"
+#include "../wait_strategy/WaitStrategyType.hpp"
+#include "../wait_strategy/BusySpinWaitStrategy.hpp"
+#include "../sequence/SequenceGroupForSingleThread.hpp"
+#include "../wait_strategy/SleepingWaitStrategy.hpp"
+#include "../wait_strategy/YieldingWaitStrategy.hpp"
 
 /**
  * mỗi processor sẽ có 1 sequence barrier duy nhất, nhằm tối ưu hóa cho các giá trị cache phía trong

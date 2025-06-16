@@ -2,7 +2,7 @@
 
 #include <functional>
 #include <array>
-#include "Common.hpp"
+#include "../common/Common.hpp"
 
 // chứa bộ đệm vòng với padding kỹ lưỡng
 namespace disruptor {

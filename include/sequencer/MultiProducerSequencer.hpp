@@ -1,8 +1,8 @@
 #pragma once
 
-#include "SequenceGroupForMultiThread.hpp"
+#include "../sequence/SequenceGroupForMultiThread.hpp"
 #include "Sequencer.hpp"
-#include "Util.hpp"
+#include "../common/Util.hpp"
 
 /**
  * cursor: vị trí cao nhất đã được producer claim nhưng chưa chắc đã được publish

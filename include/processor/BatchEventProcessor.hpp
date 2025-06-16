@@ -2,11 +2,11 @@
 #include <functional>
 #include <iostream>
 
-#include "Sequence.hpp"
-#include "SequenceBarrier.hpp"
-#include "AlertException.hpp"
-#include "RingBuffer.hpp"
-#include "Util.hpp"
+#include "../sequence/Sequence.hpp"
+#include "../barriers/SequenceBarrier.hpp"
+#include "../exception/AlertException.hpp"
+#include "../ring_buffer/RingBuffer.hpp"
+#include "../common/Util.hpp"
 
 namespace disruptor {
     template<typename T, size_t BUFFER_SIZE>
