@@ -12,53 +12,53 @@ namespace disruptor {
     template<typename T, size_t BUFFER_SIZE>
     class BatchEventProcessor final {
         Sequence sequence;
-        SequenceBarrier &sequenceBarrier;
+        SequenceBarrier &sequence_barrier;
 
         // Định nghĩa kiểu cho function object
         using EventHandler = std::function<void(T &, size_t, bool)>;
         // Biến lưu trữ function object
-        EventHandler eventHandler;
+        EventHandler event_handler;
 
-        RingBuffer<T, BUFFER_SIZE> &ringBuffer;
+        RingBuffer<T, BUFFER_SIZE> &ring_buffer;
 
     public:
-        explicit BatchEventProcessor(SequenceBarrier &barrier, EventHandler handler, RingBuffer<T, BUFFER_SIZE> &ringBuffer
-        ) : sequence(Util::calculate_initial_value_sequence(ringBuffer.getBufferSize())),
-            sequenceBarrier(barrier),
-            eventHandler(handler),
-            ringBuffer(ringBuffer) {
+        explicit BatchEventProcessor(SequenceBarrier &barrier, EventHandler handler, RingBuffer<T, BUFFER_SIZE> &ring_buffer_ptr
+        ) : sequence(Util::calculate_initial_value_sequence(ring_buffer_ptr.get_buffer_size())),
+            sequence_barrier(barrier),
+            event_handler(handler),
+            ring_buffer(ring_buffer_ptr) {
         }
 
 
-        [[nodiscard]] Sequence &getCursor() {
+        [[nodiscard]] Sequence &get_cursor() {
             return this->sequence;
         }
 
 
         void halt() const {
-            this->sequenceBarrier.alert();
+            this->sequence_barrier.alert();
         }
 
 
         void run() {
-            this->sequenceBarrier.clearAlert();
-            processEvents();
+            this->sequence_barrier.clear_alert();
+            process_events();
         }
 
 
-        void processEvents() {
-            size_t nextSequence = sequence.get() + 1;
+        void process_events() {
+            size_t next_sequence = sequence.get() + 1;
 
             while (true) {
                 try {
-                    const size_t availableSequence = this->sequenceBarrier.waitFor(nextSequence);
-                    while (nextSequence <= availableSequence) {
-                        T &event = this->ringBuffer.get(nextSequence);
-                        this->eventHandler(event, nextSequence, nextSequence == availableSequence);
-                        nextSequence++;
+                    const size_t available_sequence = this->sequence_barrier.wait_for(next_sequence);
+                    while (next_sequence <= available_sequence) {
+                        T &event = this->ring_buffer.get(next_sequence);
+                        this->event_handler(event, next_sequence, next_sequence == available_sequence);
+                        next_sequence++;
                     }
 
-                    this->sequence.set(availableSequence);
+                    this->sequence.set(available_sequence);
                 } catch (const std::exception &e) {
                     std::cout << "BatchEventProcessor exception caught: " << e.what() << std::endl;
                     break;

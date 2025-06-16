@@ -35,25 +35,24 @@ namespace disruptor {
 
     template<WaitStrategyType T, size_t NUMBER_DEPENDENT_SEQUENCES>
     class ProcessingSequenceBarrier final : public SequenceBarrier {
-        alignas(CACHE_LINE_SIZE) const char padding1[CACHE_LINE_SIZE] = {};
+        alignas(CACHE_LINE_SIZE) const char padding_1[CACHE_LINE_SIZE] = {};
         using Strategy = typename WaitStrategySelector<T, NUMBER_DEPENDENT_SEQUENCES>::type;
-        Strategy waitStrategy;
+        Strategy wait_strategy;
         // lắng nghe trực tiếp sự kiện từ publisher chứ ko phải từ 1 dependent processor nào khác
         const bool direct_publisher_event_listener;
-        const char padding2[CACHE_LINE_SIZE * 2] = {};
+        const char padding_2[CACHE_LINE_SIZE * 2] = {};
 
         alignas(CACHE_LINE_SIZE) SequenceGroupForSingleThread<NUMBER_DEPENDENT_SEQUENCES> dependent_sequences;
 
-        alignas(CACHE_LINE_SIZE) const char padding3[CACHE_LINE_SIZE] = {};
+        alignas(CACHE_LINE_SIZE) const char padding_3[CACHE_LINE_SIZE] = {};
         bool alerted;
-        const char padding4[CACHE_LINE_SIZE - sizeof(bool)] = {};
-        const char padding5[CACHE_LINE_SIZE] = {};
+        const char padding_4[CACHE_LINE_SIZE - sizeof(bool)] = {};
+        const char padding_5[CACHE_LINE_SIZE] = {};
 
         Sequencer &sequencer;
 
-
-        bool sameThread() {
-            return SequenceBarrierThreadAssertion::isSameThread(this);
+        bool same_thread() {
+            return SequenceBarrierThreadAssertion::is_same_thread(this);
         }
 
     public:
@@ -67,70 +66,63 @@ namespace disruptor {
               sequencer(sequencer) {
         }
 
+        size_t wait_for(size_t sequence) override {
+            assert(same_thread() && "Accessed by two threads");
+            check_alert();
 
-        size_t waitFor(size_t sequence) override {
-            assert(sameThread() && "Accessed by two threads");
-            checkAlert();
-
-            const size_t availableSequence = waitStrategy.waitFor(sequence, this->dependent_sequences, *this);
-            if (availableSequence < sequence) {
-                return availableSequence;
+            const size_t available_sequence = wait_strategy.wait_for(sequence, this->dependent_sequences, *this);
+            if (available_sequence < sequence) {
+                return available_sequence;
             }
 
             if (direct_publisher_event_listener) {
-                return sequencer.getHighestPublishedSequence(sequence, availableSequence);
+                return sequencer.get_highest_published_sequence(sequence, available_sequence);
             } else {
                 // nếu đã dependent vào processor khác thì khi processor kia xử lý xong thì ta xử lý luôn, vì chắc chắn event đã được publish rồi
-                return availableSequence;
+                return available_sequence;
             }
         }
 
-
-        [[nodiscard]] size_t getCursor() override {
+        [[nodiscard]] size_t get_cursor() override {
             return this->dependent_sequences.get();
         }
 
-
-        [[nodiscard]] bool isAlerted() const override {
+        [[nodiscard]] bool is_alerted() const override {
             return alerted;
         }
-
 
         void alert() override {
             alerted = true;
         }
 
-
-        void clearAlert() override {
+        void clear_alert() override {
             alerted = false;
         }
 
-
-        void checkAlert() const override {
+        void check_alert() const override {
             if (alerted) {
                 throw AlertException();
             }
         }
 
-
         /**
-       * Only used when assertions are enabled.
-       */
+         * Only used when assertions are enabled.
+         */
         class SequenceBarrierThreadAssertion {
         private:
             static inline std::unordered_map<ProcessingSequenceBarrier *, std::thread::id> SEQUENCE_BARRIERS;
-            static inline std::mutex producersMutex;
+            static inline std::mutex producers_mutex;
 
         public:
-            static bool isSameThread(ProcessingSequenceBarrier *sequenceBarrier) {
-                std::lock_guard<std::mutex> lock(producersMutex);
+            static bool is_same_thread(ProcessingSequenceBarrier *sequence_barrier) {
+                std::lock_guard<std::mutex> lock(producers_mutex);
 
-                const std::thread::id currentThread = std::this_thread::get_id();
-                if (!SEQUENCE_BARRIERS.contains(sequenceBarrier)) {
-                    SEQUENCE_BARRIERS[sequenceBarrier] = currentThread;
+                const std::thread::id current_thread = std::this_thread::get_id();
+                if (!SEQUENCE_BARRIERS.contains(sequence_barrier)) {
+                    SEQUENCE_BARRIERS[sequence_barrier] = current_thread;
                 }
 
-                return SEQUENCE_BARRIERS[sequenceBarrier] == currentThread;
+                return SEQUENCE_BARRIERS[sequence_barrier] == current_thread;
             }
         };
     };

@@ -20,25 +20,24 @@ namespace disruptor {
      */
     template<size_t NUMBER_DEPENDENT_SEQUENCES>
     class SleepingWaitStrategy final : public WaitStrategy<NUMBER_DEPENDENT_SEQUENCES> {
-    private:
         static constexpr int SPIN_THRESHOLD = 100;
         static constexpr int DEFAULT_RETRIES = 200;
         static constexpr size_t DEFAULT_SLEEP = 100;
 
         const int retries;
-        const size_t sleepTimeNs;
+        const size_t sleep_time_ns;
 
-        int applyWaitMethod(const SequenceBarrier &barrier, const int counter) const {
-            barrier.checkAlert();
+        [[nodiscard]] int apply_wait_method(const SequenceBarrier &barrier, const int counter) const {
+            barrier.check_alert();
 
             if (counter > SPIN_THRESHOLD) {
                 return counter - 1;
-            } else if (counter > 0) {
+            }
+            if (counter > 0) {
                 std::this_thread::yield();
                 return counter - 1;
-            } else {
-                std::this_thread::sleep_for(std::chrono::nanoseconds(sleepTimeNs));
             }
+            std::this_thread::sleep_for(std::chrono::nanoseconds(sleep_time_ns));
 
             return counter;
         }
@@ -60,27 +59,27 @@ namespace disruptor {
 
         /**
          * @param retries How many times the strategy should retry before sleeping
-         * @param sleepTimeNs How long the strategy should sleep, in nanoseconds
+         * @param sleep_time_ns How long the strategy should sleep, in nanoseconds
          */
-        SleepingWaitStrategy(const int retries, const size_t sleepTimeNs) : retries(retries), sleepTimeNs(sleepTimeNs) {
+        SleepingWaitStrategy(const int retries, const size_t sleep_time_ns) : retries(retries), sleep_time_ns(sleep_time_ns) {
         }
 
 
-        [[nodiscard]] size_t waitFor(const size_t sequence,
-                                     SequenceGroupForSingleThread<NUMBER_DEPENDENT_SEQUENCES> &dependent_sequences,
-                                     const SequenceBarrier &barrier) override {
-            size_t availableSequence;
+        [[nodiscard]] size_t wait_for(const size_t sequence,
+                                      SequenceGroupForSingleThread<NUMBER_DEPENDENT_SEQUENCES> &dependent_sequences,
+                                      const SequenceBarrier &barrier) override {
+            size_t available_sequence;
             int counter = retries;
 
-            while ((availableSequence = dependent_sequences.get()) < sequence) {
-                counter = applyWaitMethod(barrier, counter);
+            while ((available_sequence = dependent_sequences.get()) < sequence) {
+                counter = apply_wait_method(barrier, counter);
             }
 
-            return availableSequence;
+            return available_sequence;
         }
 
 
-        [[nodiscard]] std::string toString() const noexcept override {
+        [[nodiscard]] std::string to_string() const noexcept override {
             return "SleepingWaitStrategy";
         }
     };

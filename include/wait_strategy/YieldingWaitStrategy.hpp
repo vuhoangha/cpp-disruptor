@@ -15,11 +15,10 @@ namespace disruptor {
      */
     template<size_t NUMBER_DEPENDENT_SEQUENCES>
     class YieldingWaitStrategy final : public WaitStrategy<NUMBER_DEPENDENT_SEQUENCES> {
-    private:
         static constexpr int SPIN_TRIES = 100;
 
-        static int applyWaitMethod(const SequenceBarrier &barrier, const int counter) {
-            barrier.checkAlert();
+        static int apply_wait_method(const SequenceBarrier &barrier, const int counter) {
+            barrier.check_alert();
 
             if (0 == counter) {
                 std::this_thread::yield();
@@ -31,21 +30,21 @@ namespace disruptor {
         }
 
     public:
-        [[nodiscard]] size_t waitFor(const size_t sequence,
+        [[nodiscard]] size_t wait_for(const size_t sequence,
                                       SequenceGroupForSingleThread<NUMBER_DEPENDENT_SEQUENCES> &dependent_sequences,
                                       const SequenceBarrier &barrier) override {
-            size_t availableSequence;
+            size_t available_sequence;
             int counter = SPIN_TRIES;
 
-            while ((availableSequence = dependent_sequences.get()) < sequence) {
-                counter = applyWaitMethod(barrier, counter);
+            while ((available_sequence = dependent_sequences.get()) < sequence) {
+                counter = apply_wait_method(barrier, counter);
             }
 
-            return availableSequence;
+            return available_sequence;
         }
 
 
-        [[nodiscard]] std::string toString() const noexcept override {
+        [[nodiscard]] std::string to_string() const noexcept override {
             return "YieldingWaitStrategy";
         }
     };

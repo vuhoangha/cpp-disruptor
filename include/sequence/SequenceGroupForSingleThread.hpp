@@ -9,20 +9,19 @@
 namespace disruptor {
     template<size_t NUMBER_DEPENDENT_SEQUENCES>
     class SequenceGroupForSingleThread final {
-    private:
         // cache lại min_sequence để tăng performance khi getMinimumSequence
-        alignas(CACHE_LINE_SIZE) const char padding1[CACHE_LINE_SIZE] = {};
+        alignas(CACHE_LINE_SIZE) const char padding_1[CACHE_LINE_SIZE] = {};
         size_t cached_min_sequence{0};
         size_t index_min_sequence{0};
-        const char padding2[CACHE_LINE_SIZE - sizeof(size_t) * 2] = {};
-        const char padding3[CACHE_LINE_SIZE] = {};
+        const char padding_2[CACHE_LINE_SIZE - sizeof(size_t) * 2] = {};
+        const char padding_3[CACHE_LINE_SIZE] = {};
 
         std::array<Sequence *, NUMBER_DEPENDENT_SEQUENCES> sequences; // lưu array con trỏ tới các sequence
-        const char padding4[CACHE_LINE_SIZE * 2] = {};
+        const char padding_4[CACHE_LINE_SIZE * 2] = {};
 
     public:
-        explicit SequenceGroupForSingleThread(const std::initializer_list<std::reference_wrapper<Sequence> > dependentSequences) {
-            this->setSequences(dependentSequences);
+        explicit SequenceGroupForSingleThread(const std::initializer_list<std::reference_wrapper<Sequence> > dependent_sequences) {
+            this->set_sequences(dependent_sequences);
         }
 
         explicit SequenceGroupForSingleThread() {
@@ -31,32 +30,32 @@ namespace disruptor {
             }
         }
 
-        void setSequences(const std::initializer_list<std::reference_wrapper<Sequence> > dependentSequences) {
-            assert(dependentSequences.size() == NUMBER_DEPENDENT_SEQUENCES && std::format("Require {} sequences", NUMBER_DEPENDENT_SEQUENCES).c_str());
+        void set_sequences(const std::initializer_list<std::reference_wrapper<Sequence> > dependent_sequences) {
+            assert(dependent_sequences.size() == NUMBER_DEPENDENT_SEQUENCES && std::format("Require {} sequences", NUMBER_DEPENDENT_SEQUENCES).c_str());
             std::size_t i = 0;
-            for (auto &ref: dependentSequences) {
+            for (auto &ref: dependent_sequences) {
                 sequences[i++] = &ref.get();
             }
         }
 
         // trả ra giá trị cache gần nhất
-        [[nodiscard]] inline size_t get_cache() const {
+        [[nodiscard]] size_t get_cache() const {
             return cached_min_sequence;
         }
 
-
         [[nodiscard]] size_t get() {
             // kiểm tra xem sequence ở index "index_min_sequence" có thay đổi giá trị ko
-            size_t minimumSequence = this->sequences[index_min_sequence]->get();
-            if (minimumSequence == cached_min_sequence) {
-                return minimumSequence;
+            size_t minimum_sequence = this->sequences[index_min_sequence]->get();
+            if (minimum_sequence == cached_min_sequence) {
+                return minimum_sequence;
             }
 
             const size_t old_index = index_min_sequence;
             size_t index = index_min_sequence;
             for (size_t i = 0; i < this->sequences.size(); ++i) {
                 // sequence này đã lấy value --> bỏ qua
-                if (i == old_index) continue;
+                if (i == old_index)
+                    continue;
 
                 const size_t value = this->sequences[i].get();
 
@@ -66,43 +65,42 @@ namespace disruptor {
                     break;
                 }
 
-                if (value < minimumSequence) {
-                    minimumSequence = value;
+                if (value < minimum_sequence) {
+                    minimum_sequence = value;
                     index = i;
                 }
             }
 
-            cached_min_sequence = minimumSequence;
+            cached_min_sequence = minimum_sequence;
             index_min_sequence = index;
 
-            return minimumSequence;
+            return minimum_sequence;
         }
     };
 
-
     template<>
     class SequenceGroupForSingleThread<1> final {
-        alignas(CACHE_LINE_SIZE) const char padding1[CACHE_LINE_SIZE] = {};
+        alignas(CACHE_LINE_SIZE) const char padding_1[CACHE_LINE_SIZE] = {};
         Sequence *sequence;
-        const char padding2[CACHE_LINE_SIZE - sizeof(void *)] = {};
-        const char padding3[CACHE_LINE_SIZE] = {};
+        const char padding_2[CACHE_LINE_SIZE - sizeof(void *)] = {};
+        const char padding_3[CACHE_LINE_SIZE] = {};
 
         // cache lại min_sequence để tăng performance
         size_t cached_min_sequence{0};
-        const char padding4[CACHE_LINE_SIZE - sizeof(size_t)] = {};
-        const char padding5[CACHE_LINE_SIZE] = {};
+        const char padding_4[CACHE_LINE_SIZE - sizeof(size_t)] = {};
+        const char padding_5[CACHE_LINE_SIZE] = {};
 
     public:
-        explicit SequenceGroupForSingleThread(const std::initializer_list<std::reference_wrapper<Sequence> > dependentSequences) {
-            setSequences(dependentSequences);
+        explicit SequenceGroupForSingleThread(const std::initializer_list<std::reference_wrapper<Sequence> > dependent_sequences) {
+            set_sequences(dependent_sequences);
         }
 
         explicit SequenceGroupForSingleThread() : sequence(nullptr) {
         }
 
-        void setSequences(const std::initializer_list<std::reference_wrapper<Sequence> > dependentSequences) {
-            assert(dependentSequences.size() == 1 && "Require exactly 1 sequence");
-            sequence = &dependentSequences.begin()->get();
+        void set_sequences(const std::initializer_list<std::reference_wrapper<Sequence> > dependent_sequences) {
+            assert(dependent_sequences.size() == 1 && "Require exactly 1 sequence");
+            sequence = &dependent_sequences.begin()->get();
         }
 
         [[nodiscard]] size_t get() {
@@ -111,7 +109,7 @@ namespace disruptor {
         }
 
         // trả ra giá trị cache gần nhất
-        [[nodiscard]] inline size_t get_cache() const {
+        [[nodiscard]] size_t get_cache() const {
             return cached_min_sequence;
         }
     };

@@ -1,51 +1,15 @@
 #pragma once
 
-#include <vector>
-#include <algorithm>
 #include <stdexcept>
 #include <cstdint>
-#include <thread>
 #include <chrono>
 #include <condition_variable>
 #include <mutex>
-#include "../sequence/Sequence.hpp"
 
 namespace disruptor {
     class Util {
     public:
-        static constexpr int ONE_MILLISECOND_IN_NANOSECONDS = 1'000'000;
-
-
-        static int ceilingNextPowerOfTwo(int x) {
-            return 1 << (32 - __builtin_clz(x - 1));
-        }
-
-
-        static size_t getMinimumSequence(const std::vector<std::shared_ptr<Sequence> > &sequences, size_t minimum = INT64_MAX) {
-            size_t minimumSequence = minimum;
-            for (const auto &sequence: sequences) {
-                size_t value = sequence->get();
-                minimumSequence = std::min(minimumSequence, value);
-            }
-            return minimumSequence;
-        }
-
-
-        template<size_t N>
-        static size_t getMinimumSequenceWithCache(const std::array<Sequence *, N> &sequences, const size_t cached_min_sequence = INT64_MIN) {
-            size_t minimumSequence = INT64_MAX;
-            for (const auto &sequence: sequences) {
-                const size_t value = sequence->get();
-                if (value <= cached_min_sequence) {
-                    return cached_min_sequence;
-                }
-                minimumSequence = std::min(minimumSequence, value);
-            }
-            return minimumSequence;
-        }
-
-
-        static int log2(const int value) {
+        static int log_2(const int value) {
             if (value < 1) {
                 throw std::invalid_argument("value must be a positive number");
             }

@@ -13,17 +13,17 @@ namespace disruptor {
 
         static constexpr size_t INDEX_MASK = BUFFER_SIZE - 1;
 
-        alignas(CACHE_LINE_SIZE) const char padding1[CACHE_LINE_SIZE] = {};
+        alignas(CACHE_LINE_SIZE) const char padding_1[CACHE_LINE_SIZE] = {};
         std::array<T, BUFFER_SIZE> entries;
-        char padding2[CACHE_LINE_SIZE * 2] = {};
+        char padding_2[CACHE_LINE_SIZE * 2] = {};
 
-        std::function<T()> eventFactory;
+        std::function<T()> event_factory;
 
     public:
-        explicit RingBuffer(std::function<T()> eventFactory) : eventFactory(std::move(eventFactory)) {
+        explicit RingBuffer(std::function<T()> event_creator) : event_factory(std::move(event_creator)) {
             // Pre-populate the buffer with events
             for (size_t i = 0; i < BUFFER_SIZE; i++) {
-                entries[i] = this->eventFactory();
+                entries[i] = this->event_factory();
             }
         }
 
@@ -31,7 +31,7 @@ namespace disruptor {
             return entries[sequence & INDEX_MASK];
         }
 
-        static constexpr size_t getBufferSize() noexcept {
+        static constexpr size_t get_buffer_size() noexcept {
             return BUFFER_SIZE;
         }
     };

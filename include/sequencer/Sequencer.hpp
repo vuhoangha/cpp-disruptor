@@ -24,10 +24,10 @@ namespace disruptor {
          * @param sequence of the buffer to check
          * @return true if the sequence is available for use, false if not
          */
-        [[nodiscard]] virtual bool isAvailable(size_t sequence) const = 0;
+        [[nodiscard]] virtual bool is_available(size_t sequence) const = 0;
 
 
-        virtual void addGatingSequences(std::initializer_list<std::reference_wrapper<Sequence> > sequences) = 0;
+        virtual void add_gating_sequences(std::initializer_list<std::reference_wrapper<Sequence> > sequences) = 0;
 
         /**
          * Get the highest sequence number that can be safely read from the ring buffer. Depending
@@ -37,11 +37,11 @@ namespace disruptor {
          * nextSequence - 1. To work correctly a consumer should pass a value that
          * is 1 higher than the last sequence that was successfully processed.
          *
-         * @param nextSequence      The sequence to start scanning from.
-         * @param availableSequence The sequence to scan to.
+         * @param next_sequence      The sequence to start scanning from.
+         * @param available_sequence The sequence to scan to.
          * @return The highest value that can be safely read, will be at least nextSequence - 1.
          */
-        [[nodiscard]] virtual size_t getHighestPublishedSequence(size_t nextSequence, size_t availableSequence) const = 0;
+        [[nodiscard]] virtual size_t get_highest_published_sequence(size_t next_sequence, size_t available_sequence) const = 0;
 
         /**
          * Claim the next event in sequence for publishing.

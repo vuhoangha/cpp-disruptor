@@ -26,7 +26,7 @@ namespace disruptor {
          * @throws AlertException if the status of the Disruptor has changed.
          * @throws TimeoutException if a timeout occurs before waiting completes (not used by some strategies)
          */
-        [[nodiscard]] virtual size_t waitFor(
+        [[nodiscard]] virtual size_t wait_for(
             size_t sequence,
             SequenceGroupForSingleThread<NUMBER_DEPENDENT_SEQUENCES> &dependent_sequences,
             const SequenceBarrier &barrier) = 0;
@@ -34,6 +34,6 @@ namespace disruptor {
         /**
          * String representation of the wait strategy
          */
-        [[nodiscard]] virtual std::string toString() const = 0;
+        [[nodiscard]] virtual std::string to_string() const = 0;
     };
 } // namespace disruptor
