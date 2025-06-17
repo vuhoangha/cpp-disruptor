@@ -31,17 +31,17 @@ namespace disruptor {
 
 
         [[nodiscard]] Sequence &get_cursor() {
-            return this->sequence;
+            return sequence;
         }
 
 
         void halt() const {
-            this->sequence_barrier.alert();
+            sequence_barrier.alert();
         }
 
 
         void run() {
-            this->sequence_barrier.clear_alert();
+            sequence_barrier.clear_alert();
             process_events();
         }
 
@@ -51,14 +51,14 @@ namespace disruptor {
 
             while (true) {
                 try {
-                    const size_t available_sequence = this->sequence_barrier.wait_for(next_sequence);
+                    const size_t available_sequence = sequence_barrier.wait_for(next_sequence);
                     while (next_sequence <= available_sequence) {
-                        T &event = this->ring_buffer.get(next_sequence);
-                        this->event_handler(event, next_sequence, next_sequence == available_sequence);
+                        T &event = ring_buffer.get(next_sequence);
+                        event_handler(event, next_sequence, next_sequence == available_sequence);
                         next_sequence++;
                     }
 
-                    this->sequence.set(available_sequence);
+                    sequence.set(available_sequence);
                 } catch (const std::exception &e) {
                     std::cout << "BatchEventProcessor exception caught: " << e.what() << std::endl;
                     break;

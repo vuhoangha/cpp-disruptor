@@ -31,61 +31,61 @@ namespace disruptor {
         }
 
         void add_gating_sequences(const std::initializer_list<std::reference_wrapper<Sequence> > sequences) override {
-            this->gating_sequences.set_sequences(sequences);
+            gating_sequences.set_sequences(sequences);
         }
 
         size_t next() override {
-            return this->next(1);
+            return next(1);
         }
 
         size_t next(const size_t n) override {
             assert(same_thread() && "Accessed by two threads - use ProducerType.MULTI!");
-            const size_t buffer_size = this->ring_buffer.get_buffer_size();
+            const size_t buffer_size = ring_buffer.get_buffer_size();
 
             if (n < 1 || n > buffer_size) {
                 throw std::invalid_argument("n must be > 0 and < bufferSize");
             }
 
-            const size_t local_next_value = this->latest_claimed_sequence;
+            const size_t local_next_value = latest_claimed_sequence;
             const size_t next_sequence = local_next_value + n;
             const size_t wrap_point = next_sequence - buffer_size;
 
-            if (this->gating_sequences.get_cache() < wrap_point) {
+            if (gating_sequences.get_cache() < wrap_point) {
                 // chờ cho tới khi consumer xử lý xong để có chỗ trống ghi dữ liệu
-                while (wrap_point > this->gating_sequences.get()) {
+                while (wrap_point > gating_sequences.get()) {
                     std::this_thread::sleep_for(std::chrono::nanoseconds(1));
                 }
             }
 
-            this->latest_claimed_sequence = next_sequence;
+            latest_claimed_sequence = next_sequence;
 
             return next_sequence;
         }
 
         void claim(const size_t sequence) override {
-            this->latest_claimed_sequence = sequence;
+            latest_claimed_sequence = sequence;
         }
 
         void publish(const size_t sequence) override {
-            this->cursor.set(sequence);
+            cursor.set(sequence);
         }
 
         void publish(const size_t lo, const size_t hi) override {
-            this->publish(hi);
+            publish(hi);
         }
 
         [[nodiscard]] bool is_available(const size_t sequence) const override {
-            const size_t current_sequence = this->cursor.get();
-            return sequence <= current_sequence && sequence > current_sequence - this->ring_buffer.get_buffer_size();
+            const size_t current_sequence = cursor.get();
+            return sequence <= current_sequence && sequence > current_sequence - ring_buffer.get_buffer_size();
         }
 
-        // trong các sequence barrier thì thường "nextSequence" là sequence mà barrier đang chờ, availableSequence là sequence đã được publish hoặc các dependency consmer xử lý xong
+        // trong các sequence barrier thì thường "nextSequence" là sequence mà barrier đang chờ, availableSequence là sequence đã được publish hoặc các dependency consumer xử lý xong
         // trong hàm waitFor của SequenceBarrier thì nextSequence <= availableSequence thì mới gọi tới đây
         [[nodiscard]] size_t get_highest_published_sequence(const size_t next_sequence, const size_t available_sequence) const override {
             return available_sequence;
         }
 
-        [[nodiscard]] Sequence &getCursor() {
+        [[nodiscard]] Sequence &get_cursor() {
             return cursor;
         }
 

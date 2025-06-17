@@ -21,7 +21,7 @@ namespace disruptor {
 
     public:
         explicit SequenceGroupForSingleThread(const std::initializer_list<std::reference_wrapper<Sequence> > dependent_sequences) {
-            this->set_sequences(dependent_sequences);
+            set_sequences(dependent_sequences);
         }
 
         explicit SequenceGroupForSingleThread() {
@@ -45,19 +45,19 @@ namespace disruptor {
 
         [[nodiscard]] size_t get() {
             // kiểm tra xem sequence ở index "index_min_sequence" có thay đổi giá trị ko
-            size_t minimum_sequence = this->sequences[index_min_sequence]->get();
+            size_t minimum_sequence = sequences[index_min_sequence]->get();
             if (minimum_sequence == cached_min_sequence) {
                 return minimum_sequence;
             }
 
             const size_t old_index = index_min_sequence;
             size_t index = index_min_sequence;
-            for (size_t i = 0; i < this->sequences.size(); ++i) {
+            for (size_t i = 0; i < sequences.size(); ++i) {
                 // sequence này đã lấy value --> bỏ qua
                 if (i == old_index)
                     continue;
 
-                const size_t value = this->sequences[i].get();
+                const size_t value = sequences[i].get();
 
                 // sequence khác có value trùng với value cache
                 if (value == cached_min_sequence) {

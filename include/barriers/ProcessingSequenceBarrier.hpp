@@ -70,7 +70,7 @@ namespace disruptor {
             assert(same_thread() && "Accessed by two threads");
             check_alert();
 
-            const size_t available_sequence = wait_strategy.wait_for(sequence, this->dependent_sequences, *this);
+            const size_t available_sequence = wait_strategy.wait_for(sequence, dependent_sequences, *this);
             if (available_sequence < sequence) {
                 return available_sequence;
             }
@@ -84,7 +84,7 @@ namespace disruptor {
         }
 
         [[nodiscard]] size_t get_cursor() override {
-            return this->dependent_sequences.get();
+            return dependent_sequences.get();
         }
 
         [[nodiscard]] bool is_alerted() const override {

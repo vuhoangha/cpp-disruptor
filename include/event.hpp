@@ -12,7 +12,7 @@ namespace disruptor {
         }
 
         [[nodiscard]] size_t get_value() const {
-            return this->value;
+            return value;
         }
     };
 }

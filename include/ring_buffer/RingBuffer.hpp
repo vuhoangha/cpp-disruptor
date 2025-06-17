@@ -23,7 +23,7 @@ namespace disruptor {
         explicit RingBuffer(std::function<T()> event_creator) : event_factory(std::move(event_creator)) {
             // Pre-populate the buffer with events
             for (size_t i = 0; i < BUFFER_SIZE; i++) {
-                entries[i] = this->event_factory();
+                entries[i] = event_factory();
             }
         }
 

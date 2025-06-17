@@ -21,7 +21,7 @@ namespace disruptor {
 
     public:
         explicit SequenceGroupForMultiThread(const std::initializer_list<std::reference_wrapper<Sequence> > dependent_sequences) {
-            this->set_sequences(dependent_sequences);
+            set_sequences(dependent_sequences);
         }
 
         explicit SequenceGroupForMultiThread() {
@@ -39,17 +39,17 @@ namespace disruptor {
         }
 
         [[nodiscard]] size_t get() {
-            const size_t min_sequence = this->cached_min_sequence.load(std::memory_order_relaxed);
+            const size_t min_sequence = cached_min_sequence.load(std::memory_order_relaxed);
             const size_t new_min_sequence = get_minimum_sequence(min_sequence);
             if (min_sequence < new_min_sequence) {
-                this->cached_min_sequence.store(new_min_sequence, std::memory_order_relaxed);
+                cached_min_sequence.store(new_min_sequence, std::memory_order_relaxed);
             }
             return new_min_sequence;
         }
 
         [[nodiscard]] size_t get_minimum_sequence(const size_t cached_sequence) {
             size_t minimum_sequence = INT64_MAX;
-            for (const auto &sequence: this->sequences) {
+            for (const auto &sequence: sequences) {
                 const size_t value = sequence->get();
                 if (value <= cached_sequence) {
                     return cached_sequence;
@@ -61,7 +61,7 @@ namespace disruptor {
 
         // trả ra giá trị cache gần nhất
         [[nodiscard]] size_t get_cache() const {
-            return this->cached_min_sequence.load(std::memory_order_relaxed);
+            return cached_min_sequence.load(std::memory_order_relaxed);
         }
     };
 

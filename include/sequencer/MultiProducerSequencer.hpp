@@ -39,11 +39,11 @@ namespace disruptor {
         }
 
         void add_gating_sequences(const std::initializer_list<std::reference_wrapper<Sequence> > sequences) override {
-            this->gating_sequences.set_sequences(sequences);
+            gating_sequences.set_sequences(sequences);
         }
 
         void claim(const size_t sequence) override {
-            this->cursor.set(sequence);
+            cursor.set(sequence);
         }
 
         size_t next() override {
@@ -51,19 +51,19 @@ namespace disruptor {
         }
 
         size_t next(const size_t n) override {
-            const size_t buffer_size = this->ring_buffer.get_buffer_size();
+            const size_t buffer_size = ring_buffer.get_buffer_size();
 
             if (n < 1 || n > buffer_size) {
                 throw std::invalid_argument("n must be > 0 and < bufferSize");
             }
 
-            const size_t current_sequence = this->cursor.get_and_add_relax(n);
+            const size_t current_sequence = cursor.get_and_add_relax(n);
             const size_t next_sequence = current_sequence + n;
             const size_t wrap_point = next_sequence - buffer_size;
-            const size_t cached_gating_sequence = this->gating_sequences.get_cache();
+            const size_t cached_gating_sequence = gating_sequences.get_cache();
 
             if (cached_gating_sequence < wrap_point) {
-                while (this->gating_sequences.get() < wrap_point) {
+                while (gating_sequences.get() < wrap_point) {
                     std::this_thread::sleep_for(std::chrono::nanoseconds(1));
                 }
             }
@@ -72,12 +72,12 @@ namespace disruptor {
         }
 
         void publish(const size_t sequence) override {
-            this->set_available(sequence);
+            set_available(sequence);
         }
 
         void publish(const size_t low, const size_t high) override {
             for (size_t i = low; i <= high; ++i) {
-                this->set_available(i);
+                set_available(i);
             }
         }
 

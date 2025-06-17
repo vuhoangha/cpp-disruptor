@@ -16,7 +16,7 @@ void run_single_sequencer() {
     disruptor::RingBuffer<disruptor::Event, ring_buffer_size> ring_buffer([]() { return disruptor::Event(); });
 
     disruptor::SingleProducerSequencer<disruptor::Event, ring_buffer_size, 1> sequencer(ring_buffer);
-    std::reference_wrapper<disruptor::Sequence> cursor_sequencer = sequencer.getCursor();
+    std::reference_wrapper<disruptor::Sequence> cursor_sequencer = sequencer.get_cursor();
 
 
     // Tạo đối tượng BatchEventProcessor
