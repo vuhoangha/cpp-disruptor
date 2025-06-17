@@ -1,6 +1,3 @@
-- Sử dụng cache line 128 thay vì 64 nhé, vì 1 số chip mới có cơ chế prefetching dẫn tới nó load cả cache line liền kề. Vậy nên khi cache line liền kề thay đổi thì core hiện tại cũng phải load lại
-  - https://github.com/LMAX-Exchange/disruptor/issues/158
-  - https://github.com/LMAX-Exchange/disruptor/issues/211
 - các comment có đánh dấu "__PERF" là gợi ý tối ưu
 - Tối ưu rẽ nhánh (Branch Prediction Cache)
 - Tối ưu sử dụng SIMD
@@ -18,3 +15,29 @@
     + https://github.com/LMAX-Exchange/disruptor/issues/231
     + https://mechanical-sympathy.blogspot.com/2011/08/false-sharing-java-7.html
 - [Ý tưởng] cũng trong vòng lặp đọc biến sequence mong chờ với relax, dùng câu lệnh if để ràng buộc, chống CPU tự sắp xếp câu lệnh.
+- tận dụng Attribute [[likely]] và [[unlikely]]
+```cpp
+void processData(bool condition) {
+    if (condition) [[likely]] {
+        // Code được thực thi thường xuyên
+        hotPath();
+    } else [[unlikely]] {
+        // Code ít khi được thực thi
+        coldPath();
+    }
+}
+- ```
+- tận dụng [[gnu::hot]] và [[gnu::cold]]
+```cpp
+// Compiler có thể tối ưu khác nhau cho hot vs cold path
+void hotMethod() [[gnu::hot]] {  // GCC specific
+    // Compiler sẽ ưu tiên tối ưu hóa method này
+    // Ví dụ: aggressive inlining, loop unrolling
+}
+
+void coldMethod() [[gnu::cold]] {  // GCC specific  
+    // Tối ưu hóa ít hơn, ưu tiên code size
+}
+- ```
+- Áp dụng kỹ thuật Profile-Guided Optimization (PGO) để compiler có thể tối ưu theo môi trường production thực tế nhé
+- [Các kỹ thuật tối ưu khác cho c++ 20 nhé] (https://claude.ai/share/d4e61284-04a2-4744-a1bc-62c29fda21da)
