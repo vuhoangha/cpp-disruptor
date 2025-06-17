@@ -14,9 +14,7 @@ namespace disruptor {
         Sequence sequence;
         SequenceBarrier &sequence_barrier;
 
-        // Định nghĩa kiểu cho function object
         using EventHandler = std::function<void(T &, size_t, bool)>;
-        // Biến lưu trữ function object
         EventHandler event_handler;
 
         RingBuffer<T, BUFFER_SIZE> &ring_buffer;
@@ -35,6 +33,7 @@ namespace disruptor {
         }
 
 
+        // stop processor --> sequence barrier --> wait strategy
         void halt() const {
             sequence_barrier.alert();
         }

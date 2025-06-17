@@ -12,7 +12,8 @@
 #include "../wait_strategy/YieldingWaitStrategy.hpp"
 
 /**
- * mỗi processor sẽ có 1 sequence barrier duy nhất, nhằm tối ưu hóa cho các giá trị cache phía trong
+ * each processor will have a single corresponding sequence barrier. The purpose is to optimize cache
+ * values within sequence barrier for each processor and to avoid race conditions.
  */
 namespace disruptor {
     template<WaitStrategyType T, size_t NUMBER_DEPENDENT_SEQUENCES>
@@ -38,8 +39,7 @@ namespace disruptor {
         alignas(CACHE_LINE_SIZE) const char padding_1[CACHE_LINE_SIZE] = {};
         using Strategy = typename WaitStrategySelector<T, NUMBER_DEPENDENT_SEQUENCES>::type;
         Strategy wait_strategy;
-        // lắng nghe trực tiếp sự kiện từ publisher chứ ko phải từ 1 dependent processor nào khác
-        const bool direct_publisher_event_listener;
+        const bool direct_publisher_event_listener;     // listen directly to events from the publisher, not from any dependent processor
         const char padding_2[CACHE_LINE_SIZE * 2] = {};
 
         alignas(CACHE_LINE_SIZE) SequenceGroupForSingleThread<NUMBER_DEPENDENT_SEQUENCES> dependent_sequences;
@@ -51,6 +51,7 @@ namespace disruptor {
 
         Sequencer &sequencer;
 
+        // allow single thread access to the sequence barrier
         bool same_thread() {
             return SequenceBarrierThreadAssertion::is_same_thread(this);
         }
@@ -66,6 +67,7 @@ namespace disruptor {
               sequencer(sequencer) {
         }
 
+        // wait for a specific sequence to be ready for processing
         size_t wait_for(size_t sequence) override {
             assert(same_thread() && "Accessed by two threads");
             check_alert();
@@ -76,15 +78,15 @@ namespace disruptor {
             }
 
             if (direct_publisher_event_listener) {
+                // listen directly from the publisher
+                // single producer: directly returns "available_sequence"
+                // multi producer: returns the highest contiguous sequence that has been published
                 return sequencer.get_highest_published_sequence(sequence, available_sequence);
-            } else {
-                // nếu đã dependent vào processor khác thì khi processor kia xử lý xong thì ta xử lý luôn, vì chắc chắn event đã được publish rồi
-                return available_sequence;
             }
-        }
 
-        [[nodiscard]] size_t get_cursor() override {
-            return dependent_sequences.get();
+            // wait after other processors
+            // this sequence is guaranteed to have been published
+            return available_sequence;
         }
 
         [[nodiscard]] bool is_alerted() const override {
@@ -109,13 +111,12 @@ namespace disruptor {
          * Only used when assertions are enabled.
          */
         class SequenceBarrierThreadAssertion {
-        private:
             static inline std::unordered_map<ProcessingSequenceBarrier *, std::thread::id> SEQUENCE_BARRIERS;
             static inline std::mutex producers_mutex;
 
         public:
             static bool is_same_thread(ProcessingSequenceBarrier *sequence_barrier) {
-                std::lock_guard<std::mutex> lock(producers_mutex);
+                std::lock_guard lock(producers_mutex);
 
                 const std::thread::id current_thread = std::this_thread::get_id();
                 if (!SEQUENCE_BARRIERS.contains(sequence_barrier)) {

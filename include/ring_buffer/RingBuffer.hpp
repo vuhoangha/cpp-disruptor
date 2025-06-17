@@ -4,7 +4,6 @@
 #include <array>
 #include "../common/Common.hpp"
 
-// chứa bộ đệm vòng với padding kỹ lưỡng
 namespace disruptor {
     template<typename T, size_t BUFFER_SIZE>
     class RingBuffer {

@@ -42,9 +42,8 @@ namespace disruptor {
 
         static void check_size_t_size() {
             if constexpr (sizeof(size_t) != 8) {
-                std::cerr << "CẢNH BÁO: Kích thước của size_t là " << sizeof(size_t)
-                        << " bytes, không phải 8 bytes như mong đợi!" << std::endl;
-                std::cerr << "Điều này có thể gây ra vấn đề về hiệu suất hoặc tính đúng đắn của chương trình." << std::endl;
+                std::cerr << "WARNING: Size of size_t: " << sizeof(size_t)
+                        << " bytes, not 8 bytes as expected!" << std::endl;
             }
         }
 
@@ -52,27 +51,23 @@ namespace disruptor {
         static void check_size_t_lock_free() {
             const std::atomic<std::size_t> as;
             if (!as.is_lock_free()) {
-                std::cerr << "CẢNH BÁO: size_t ko support lock free" << std::endl;
+                std::cerr << "WARNING: size_t not support lock free" << std::endl;
             }
         }
 
 
-        // kiểm tra điều kiện môi trường có đáp ứng để chương trình chạy ổn định và hiệu quả không
+        // verifying that the environment is suitable for running the system
         static void require_for_system_run_stable() {
-            // kiểm tra cache line
-            if (Util::get_cache_line_size() != 64) {
-                std::cerr << "CẢNH BÁO: CACHE_LINE ko phải 64 bytes" << std::endl;
+            if (get_cache_line_size() != 64) {
+                std::cerr << "WARNING: CACHE_LINE not 64 bytes" << std::endl;
             }
-
-            // kiểm tra kiểu size_t
-            Util::check_size_t_size();
-
-            // kiểm tra atomic size_t lockfree
-            Util::check_size_t_lock_free();
+            check_size_t_size();
+            check_size_t_lock_free();
         }
 
 
-        // khởi tạo sequence với điều kiện sequence - buffer_size phải >= 0. Đang cố để mọi biến theo kiểu size_t tránh việc phải ép kiểu
+        // initial the sequence with the condition that (sequence - buffer_size) must be >= 0. The reason is that the system user size_t to avoid unnecessary type casting.
+        // however, size_t is always >= 0
         static size_t calculate_initial_value_sequence(const size_t buffer_size) {
             return buffer_size;
         }

@@ -5,25 +5,20 @@
 #include "../common/Util.hpp"
 
 /**
- * cursor: vị trí cao nhất đã được producer claim nhưng chưa chắc đã được publish
- * availableBuffer: Lưu số vòng quay tương ứng vị trí trong ring_buffer để biết 1 sequence đã được publish hay chưa
+ * cursor: the highest sequence number that has been claimed by the producer but not yet published.
+ * availableBuffer: store the corresponding rotation count for the position in the ring buffer to determine whether a sequence has been published.
  */
 namespace disruptor {
     template<typename T, size_t RING_BUFFER_SIZE, size_t NUMBER_GATING_SEQUENCES>
     class MultiProducerSequencer final : public Sequencer {
-        // quản lý các sequence đã được publisher claim. Seq ở đây tăng ko đồng nghĩa với việc seq đã được publish đâu nhé.
         alignas(CACHE_LINE_SIZE) Sequence cursor{Util::calculate_initial_value_sequence(RING_BUFFER_SIZE)};
 
         alignas(CACHE_LINE_SIZE) const char padding_1[CACHE_LINE_SIZE] = {};
-        // chính là buffer_size - 1. Dùng để tính toán vị trí trong ring buffer tương tự phép chía lấy dư
         const size_t index_mask;
-        // dùng để tính xem sequence hiện tại đã quay được bao nhiêu vòng bằng dịch phải indexShift bit. Ví dụ ring_buffer = 16 thì indexShift = 4 --> sequence=89 --> 89>>5=5 --> sequence này đã quay được 5 vòng
-        const size_t index_shift;
+        const size_t index_shift; // ring_buffer = 16 --> indexShift = 4 (log2(16) = 4). Sequence = 89 --> 89 >> 4 = 5. To reach this sequence, the ring buffer must complete 5 full rotations.
         const char padding_2[CACHE_LINE_SIZE - sizeof(std::atomic<size_t>) * 2] = {};
         const char padding_3[CACHE_LINE_SIZE] = {};
 
-        // mảng chứa số vòng quay của từng vị trí trong RingBuffer. Nó sẽ báo hiệu sequence này được publish hay chưa
-        // vì cần tính chất atomic + memory barriers nên Sequence hoàn toàn đáp ứng
         std::array<Sequence, RING_BUFFER_SIZE> available_buffer;
         const char padding_4[CACHE_LINE_SIZE * 2] = {};
 
@@ -106,8 +101,8 @@ namespace disruptor {
         }
 
         /**
-         * lấy sequence cao nhất đã được publish để consumer xử lý
-         * vì trong môi trường multi producer thì có thể sequence 10 đã được producer A publish còn sequence 9 do producer B đảm nhiệm vẫn đang xử lý
+         * Retrieve the highest sequence that has been published for the consumer to process.
+         * In a multi-producer environment, it's possible that sequence 10 has already been published by producer A, while sequence 9, handled by producer B, is still being processed.
          */
         [[nodiscard]] size_t get_highest_published_sequence(const size_t lower_bound, const size_t available_sequence) const override {
             for (size_t sequence = lower_bound; sequence <= available_sequence; ++sequence) {

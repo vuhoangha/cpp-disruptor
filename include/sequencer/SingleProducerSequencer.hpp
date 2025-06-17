@@ -11,10 +11,10 @@
 namespace disruptor {
     template<typename T, size_t RING_BUFFER_SIZE, size_t NUMBER_GATING_SEQUENCES>
     class SingleProducerSequencer final : public Sequencer {
-        // quản lý các sequence đã được publish
+        // manage the sequences that have been published.
         alignas(CACHE_LINE_SIZE) Sequence cursor{Util::calculate_initial_value_sequence(RING_BUFFER_SIZE)};
 
-        // seq gần nhất đã được publisher claim
+        // the most recent sequence has been claimed by the publisher.
         size_t latest_claimed_sequence{Util::calculate_initial_value_sequence(RING_BUFFER_SIZE)};
         const char padding_1[CACHE_LINE_SIZE - sizeof(size_t)] = {};
         const char padding_2[CACHE_LINE_SIZE] = {};
@@ -51,7 +51,6 @@ namespace disruptor {
             const size_t wrap_point = next_sequence - buffer_size;
 
             if (gating_sequences.get_cache() < wrap_point) {
-                // chờ cho tới khi consumer xử lý xong để có chỗ trống ghi dữ liệu
                 while (wrap_point > gating_sequences.get()) {
                     std::this_thread::sleep_for(std::chrono::nanoseconds(1));
                 }
@@ -79,8 +78,6 @@ namespace disruptor {
             return sequence <= current_sequence && sequence > current_sequence - ring_buffer.get_buffer_size();
         }
 
-        // trong các sequence barrier thì thường "nextSequence" là sequence mà barrier đang chờ, availableSequence là sequence đã được publish hoặc các dependency consumer xử lý xong
-        // trong hàm waitFor của SequenceBarrier thì nextSequence <= availableSequence thì mới gọi tới đây
         [[nodiscard]] size_t get_highest_published_sequence(const size_t next_sequence, const size_t available_sequence) const override {
             return available_sequence;
         }
@@ -93,11 +90,6 @@ namespace disruptor {
          * Only used when assertions are enabled.
          */
         class ProducerThreadAssertion {
-            /**
-             * Tracks the threads publishing to SingleProducerSequencers to identify if more than one
-             * thread accesses any SingleProducerSequencer.
-             * I.e. it helps developers detect early if they use the wrong ProducerType.
-             */
             static inline std::unordered_map<SingleProducerSequencer *, std::thread::id> PRODUCERS;
             static inline std::mutex producers_mutex;
 

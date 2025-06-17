@@ -3,12 +3,14 @@
 #include "../barriers/SequenceBarrier.hpp"
 #include "../sequence/SequenceGroupForSingleThread.hpp"
 
-namespace disruptor {
+namespace disruptor
+{
     /**
      * Strategy employed for making EventProcessors wait on a cursor Sequence.
      */
-    template<size_t NUMBER_DEPENDENT_SEQUENCES>
-    class WaitStrategy {
+    template <size_t NUMBER_DEPENDENT_SEQUENCES>
+    class WaitStrategy
+    {
     public:
         virtual ~WaitStrategy() = default;
 
@@ -36,4 +38,4 @@ namespace disruptor {
          */
         [[nodiscard]] virtual std::string to_string() const = 0;
     };
-} // namespace disruptor
+}

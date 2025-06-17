@@ -10,13 +10,12 @@
 namespace disruptor {
     template<size_t NUMBER_DEPENDENT_SEQUENCES>
     class SequenceGroupForMultiThread final {
-        // cache lại min_sequence để tăng performance khi get_minimum_sequence
         alignas(CACHE_LINE_SIZE) const char padding_1[CACHE_LINE_SIZE] = {};
         std::atomic<size_t> cached_min_sequence{0};
         const char padding_2[CACHE_LINE_SIZE - sizeof(std::atomic<size_t>)] = {};
         const char padding_3[CACHE_LINE_SIZE] = {};
 
-        std::array<Sequence *, NUMBER_DEPENDENT_SEQUENCES> sequences; // lưu array con trỏ tới các sequence
+        std::array<Sequence *, NUMBER_DEPENDENT_SEQUENCES> sequences; // Contains an array of pointers to sequences
         const char padding_4[CACHE_LINE_SIZE * 2] = {};
 
     public:
@@ -59,7 +58,7 @@ namespace disruptor {
             return minimum_sequence;
         }
 
-        // trả ra giá trị cache gần nhất
+        // get the most recent cached value
         [[nodiscard]] size_t get_cache() const {
             return cached_min_sequence.load(std::memory_order_relaxed);
         }

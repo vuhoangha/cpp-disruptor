@@ -3,8 +3,7 @@
 namespace disruptor
 {
     /**
-     * Coordination barrier for tracking the cursor for publishers and sequence of
-     * dependent EventProcessors for processing a data structure
+     * Track the required processor for the processors to process
      */
     class SequenceBarrier
     {
@@ -17,16 +16,8 @@ namespace disruptor
          * @param sequence to wait for
          * @return the sequence up to which is available
          * @throws AlertException if a status change has occurred for the Disruptor
-         * @throws TimeoutException if a timeout occurs while waiting for the supplied sequence.
          */
         [[nodiscard]] virtual size_t wait_for(size_t sequence) = 0;
-
-        /**
-         * Get the current cursor value that can be read.
-         *
-         * @return value of the cursor for entries that have been published.
-         */
-        [[nodiscard]] virtual size_t get_cursor() = 0;
 
         /**
          * The current alert status for the barrier.
@@ -53,4 +44,4 @@ namespace disruptor
         virtual void check_alert() const = 0;
     };
 
-} // namespace disruptor
+}
