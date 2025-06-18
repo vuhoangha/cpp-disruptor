@@ -38,7 +38,10 @@ target_link_libraries(run_all_tests PRIVATE
         # Thêm các thư viện khác nếu cần
 )
 # Include các thư mục cần thiết
-target_include_directories(run_all_tests PRIVATE ${DISRUPTOR_INCLUDE_DIRS})
+target_include_directories(run_all_tests PRIVATE
+        ${DISRUPTOR_INCLUDE_DIRS}
+        ${TEST_ROOT}/common
+)
 
 # Tạo target riêng cho unit tests
 add_executable(run_unit_tests
@@ -50,7 +53,10 @@ target_link_libraries(run_unit_tests PRIVATE
         gtest_main
 )
 # Include các thư mục cần thiết
-target_include_directories(run_unit_tests PRIVATE ${DISRUPTOR_INCLUDE_DIRS})
+target_include_directories(run_unit_tests PRIVATE
+        ${DISRUPTOR_INCLUDE_DIRS}
+        ${TEST_ROOT}/common
+)
 
 # Tạo target riêng cho performance tests
 add_executable(run_performance_tests
@@ -63,7 +69,10 @@ target_link_libraries(run_performance_tests PRIVATE
         # Thêm các thư viện benchmark nếu cần
 )
 # Include các thư mục cần thiết
-target_include_directories(run_performance_tests PRIVATE ${DISRUPTOR_INCLUDE_DIRS})
+target_include_directories(run_performance_tests PRIVATE
+        ${DISRUPTOR_INCLUDE_DIRS}
+        ${TEST_ROOT}/common
+)
 
 # Đăng ký các tests với CTest
 add_test(NAME AllTests COMMAND run_all_tests)

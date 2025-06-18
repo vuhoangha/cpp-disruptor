@@ -42,7 +42,5 @@ namespace disruptor {
         [[nodiscard]] std::string to_string() const {
             return std::to_string(get());
         }
-
-        friend std::ostream &operator<<(std::ostream &os, const Sequence &sequence);
     };
 }

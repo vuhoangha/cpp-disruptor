@@ -56,7 +56,7 @@ namespace disruptor {
                 if (i == old_index)
                     continue;
 
-                const size_t value = sequences[i].get();
+                const size_t value = sequences[i]->get();
 
                 // another sequence has a value that matches the cached value
                 if (value == cached_min_sequence) {
