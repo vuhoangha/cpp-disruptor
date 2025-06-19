@@ -2,7 +2,8 @@
 
 #include "../sequence/SequenceGroupForMultiThread.hpp"
 #include "Sequencer.hpp"
-#include "../common/Util.hpp"
+#include "common/Util.hpp"
+#include "ring_buffer/RingBuffer.hpp"
 
 /**
  * cursor: the highest sequence number that has been claimed by the producer but not yet published.
@@ -29,16 +30,12 @@ namespace disruptor {
         explicit MultiProducerSequencer(const RingBuffer<T, RING_BUFFER_SIZE> &ring_buffer_ptr)
             : index_mask(ring_buffer_ptr.get_buffer_size() - 1), index_shift(Util::log_2(ring_buffer_ptr.get_buffer_size())), ring_buffer(ring_buffer_ptr) {
             for (auto &seq: available_buffer) {
-                seq.set(Util::calculate_initial_value_sequence(RING_BUFFER_SIZE));
+                seq.set(-1);
             }
         }
 
         void add_gating_sequences(const std::initializer_list<std::reference_wrapper<Sequence> > sequences) override {
             gating_sequences.set_sequences(sequences);
-        }
-
-        void claim(const size_t sequence) override {
-            cursor.set(sequence);
         }
 
         size_t next() override {

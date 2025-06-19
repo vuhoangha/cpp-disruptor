@@ -61,10 +61,6 @@ namespace disruptor {
             return next_sequence;
         }
 
-        void claim(const size_t sequence) override {
-            latest_claimed_sequence = sequence;
-        }
-
         void publish(const size_t sequence) override {
             cursor.set(sequence);
         }

@@ -10,8 +10,6 @@ namespace disruptor {
          */
         virtual ~Sequencer() = default;
 
-        virtual void claim(size_t sequence) = 0;
-
         [[nodiscard]] virtual bool is_available(size_t sequence) const = 0;
 
         virtual void add_gating_sequences(std::initializer_list<std::reference_wrapper<Sequence> > sequences) = 0;
