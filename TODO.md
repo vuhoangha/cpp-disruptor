@@ -1,2 +1,3 @@
 - unit test 99% hoàn thành rồi. Cần rà lại các phần comment, warning. Nếu cần thì xem các phần có mock test ổn chưa, bắt hết các hàm chưa
-- tiếp tục viết coverage, integration, performance, stress
+- tiếp tục viết coverage, integration, performance (đang thử 1P-1C thì được khoảng 40 triệu event/s), stress
+- Thêm option gắn 1 thread vào 1 core nhé

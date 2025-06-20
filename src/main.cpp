@@ -126,12 +126,65 @@ void run_multiple_sequencer() {
 }
 
 
+void test_1_producer_1_consumer() {
+    constexpr size_t ring_buffer_size = 1024;
+    disruptor::RingBuffer<disruptor::Event, ring_buffer_size> ring_buffer([]() { return disruptor::Event(); });
+
+    disruptor::SingleProducerSequencer<disruptor::Event, ring_buffer_size, 1> sequencer(ring_buffer);
+    std::reference_wrapper<disruptor::Sequence> cursor_sequencer = sequencer.get_cursor();
+
+
+    // Tạo đối tượng BatchEventProcessor
+    size_t NUM_EVENTS = 40000000;
+    size_t last_time = static_cast<size_t>(
+        std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::system_clock::now().time_since_epoch()
+        ).count()
+    );
+    auto eventHandler_1 = [NUM_EVENTS, &last_time](disruptor::Event &event, size_t sequence, bool endOfBatch) {
+        if (sequence % NUM_EVENTS == 0) {
+            size_t now = static_cast<size_t>(
+                std::chrono::duration_cast<std::chrono::milliseconds>(
+                    std::chrono::system_clock::now().time_since_epoch()
+                ).count()
+            );
+            size_t process_time = now - last_time;
+            last_time = now;
+
+            std::cout << "Thời gian: " << process_time << " ms" << std::endl;
+        }
+    };
+    constexpr size_t NUMBER_DEPENDENT_SEQUENCES = 1;
+    disruptor::ProcessingSequenceBarrier<WaitStrategyType::BUSY_SPIN, NUMBER_DEPENDENT_SEQUENCES> sequence_barrier_1(true, {cursor_sequencer}, sequencer);
+    disruptor::BatchEventProcessor<disruptor::Event, ring_buffer_size> processor_1(sequence_barrier_1, eventHandler_1, ring_buffer);
+    std::reference_wrapper<disruptor::Sequence> cursor_batch_event_processor_1 = processor_1.get_cursor();
+    sequencer.add_gating_sequences({cursor_batch_event_processor_1});
+    std::thread processorThread_1([&processor_1]() { processor_1.run(); });
+
+
+    while (true) {
+        const size_t claimed_sequence = sequencer.next();
+        disruptor::Event &event = ring_buffer.get(claimed_sequence);
+        event.set_value(claimed_sequence);
+        sequencer.publish(claimed_sequence);
+    }
+
+
+    // std::cout << "Hoàn thành!" << std::endl;
+    // std::cout << "Số lượng sự kiện: " << NUM_EVENTS << std::endl;
+    // std::cout << "Thời gian: " << std::fixed << std::setprecision(3) << seconds << " giây" << std::endl;
+    // std::cout << "Tốc độ: " << std::fixed << std::setprecision(0) << events_per_second << " sự kiện/giây" << std::endl;
+}
+
+
 int main() {
     // kiểm tra hệ thống có đủ điều kiện ko
     disruptor::Util::require_for_system_run_stable();
 
 
-    run_single_sequencer();
+    // run_single_sequencer();
+    test_1_producer_1_consumer();
+
 
     return 0;
 }
