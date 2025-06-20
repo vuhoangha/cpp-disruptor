@@ -1,1 +1,2 @@
-- phần định nghĩa hàm để ở file .hpp, phần thân hàm tách ra file .cpp riêng. Vì hàm trong class trên file .hpp mà có thân hàm luôn thì nó coi là inline, sẽ copy sang tất cả các nơi gọi làm cho code phình to nhiều
+- unit test 99% hoàn thành rồi. Cần rà lại các phần comment, warning. Nếu cần thì xem các phần có mock test ổn chưa, bắt hết các hàm chưa
+- tiếp tục viết coverage, integration, performance, stress
