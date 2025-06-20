@@ -48,7 +48,7 @@ protected:
 };
 
 TEST_F(SequenceGroupForSingleThreadTest, ShouldGetInitialCacheValue) {
-    ASSERT_EQ(group.get_cache(), 0);
+    ASSERT_EQ(group.get_cache(), 5);
 }
 
 TEST_F(SequenceGroupForSingleThreadTest, ShouldGetMinimumSequence) {

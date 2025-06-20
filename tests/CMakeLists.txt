@@ -33,9 +33,7 @@ set(ALL_TEST_SOURCES
 # Tạo target cho tất cả các tests
 add_executable(run_all_tests ${ALL_TEST_SOURCES})
 target_link_libraries(run_all_tests PRIVATE
-        gtest
-        gtest_main
-        # Thêm các thư viện khác nếu cần
+        gmock_main
 )
 # Include các thư mục cần thiết
 target_include_directories(run_all_tests PRIVATE
@@ -49,8 +47,7 @@ add_executable(run_unit_tests
         ${UNIT_TEST_SOURCES}
 )
 target_link_libraries(run_unit_tests PRIVATE
-        gtest
-        gtest_main
+        gmock_main
 )
 # Include các thư mục cần thiết
 target_include_directories(run_unit_tests PRIVATE
@@ -64,9 +61,7 @@ add_executable(run_performance_tests
         ${PERFORMANCE_TEST_SOURCES}
 )
 target_link_libraries(run_performance_tests PRIVATE
-        gtest
-        gtest_main
-        # Thêm các thư viện benchmark nếu cần
+        gmock_main
 )
 # Include các thư mục cần thiết
 target_include_directories(run_performance_tests PRIVATE
