@@ -1,5 +1,6 @@
 #pragma once
 
+#include <mutex>
 #include <unordered_map>
 #include "SequenceBarrier.hpp"
 #include "../sequence/Sequence.hpp"

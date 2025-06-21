@@ -4,6 +4,7 @@
 #include <cassert>
 #include <format>
 #include <atomic>
+#include <array>
 
 #include "Sequence.hpp"
 

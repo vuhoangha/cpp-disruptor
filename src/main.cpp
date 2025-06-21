@@ -135,24 +135,9 @@ void test_1_producer_1_consumer() {
 
 
     // Tạo đối tượng BatchEventProcessor
-    size_t NUM_EVENTS = 40000000;
-    size_t last_time = static_cast<size_t>(
-        std::chrono::duration_cast<std::chrono::milliseconds>(
-            std::chrono::system_clock::now().time_since_epoch()
-        ).count()
-    );
-    auto eventHandler_1 = [NUM_EVENTS, &last_time](disruptor::Event &event, size_t sequence, bool endOfBatch) {
-        if (sequence % NUM_EVENTS == 0) {
-            size_t now = static_cast<size_t>(
-                std::chrono::duration_cast<std::chrono::milliseconds>(
-                    std::chrono::system_clock::now().time_since_epoch()
-                ).count()
-            );
-            size_t process_time = now - last_time;
-            last_time = now;
-
-            std::cout << "Thời gian: " << process_time << " ms" << std::endl;
-        }
+    size_t counter = 0;
+    auto eventHandler_1 = [&counter](disruptor::Event &event, size_t sequence, bool endOfBatch) {
+        counter++;
     };
     constexpr size_t NUMBER_DEPENDENT_SEQUENCES = 1;
     disruptor::ProcessingSequenceBarrier<WaitStrategyType::BUSY_SPIN, NUMBER_DEPENDENT_SEQUENCES> sequence_barrier_1(true, {cursor_sequencer}, sequencer);
@@ -161,8 +146,19 @@ void test_1_producer_1_consumer() {
     sequencer.add_gating_sequences({cursor_batch_event_processor_1});
     std::thread processorThread_1([&processor_1]() { processor_1.run(); });
 
+    // Số lượng sự kiện sẽ được gửi
+    constexpr size_t NUM_EVENTS = 100'000'000;
 
-    while (true) {
+    // Đợi consumer khởi động
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+    // Đo thời gian và hiệu suất của producer
+    std::cout << "Start send " << NUM_EVENTS << " event..." << std::endl;
+
+    auto start_time = std::chrono::high_resolution_clock::now();
+
+
+    for (size_t i = 0; i < NUM_EVENTS; ++i) {
         const size_t claimed_sequence = sequencer.next();
         disruptor::Event &event = ring_buffer.get(claimed_sequence);
         event.set_value(claimed_sequence);
@@ -170,10 +166,26 @@ void test_1_producer_1_consumer() {
     }
 
 
+    auto end_time = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
+
+
+    // Đợi consumer xử lý hết
+    while (counter < NUM_EVENTS) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+    processor_1.halt();
+    processorThread_1.join();
+
+
+    double seconds = duration.count() / 1000.0;
+    double events_per_second = NUM_EVENTS / seconds;
+
+
     // std::cout << "Hoàn thành!" << std::endl;
     // std::cout << "Số lượng sự kiện: " << NUM_EVENTS << std::endl;
-    // std::cout << "Thời gian: " << std::fixed << std::setprecision(3) << seconds << " giây" << std::endl;
-    // std::cout << "Tốc độ: " << std::fixed << std::setprecision(0) << events_per_second << " sự kiện/giây" << std::endl;
+    std::cout << "Time: " << std::fixed << std::setprecision(3) << seconds << " s" << std::endl;
+    std::cout << "Rate: " << std::fixed << std::setprecision(0) << events_per_second << " event/s" << std::endl;
 }
 
 

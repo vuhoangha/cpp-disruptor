@@ -3,6 +3,7 @@
 #include <string>
 #include <cassert>
 #include <format>
+#include <array>
 
 #include "Sequence.hpp"
 
