@@ -22,7 +22,8 @@ void run_single_sequencer() {
 
     // Tạo đối tượng BatchEventProcessor
     auto eventHandler_1 = [](disruptor::Event &event, size_t sequence, bool endOfBatch) {
-        std::cout << std::format("{:%F %T}", std::chrono::system_clock::now()) << "Process A - event on sequence: " << sequence << " - value: " << event.get_value();
+        std::cout << std::format("{:%F %T}", std::chrono::system_clock::now()) << "Process A - event on sequence: " <<
+                sequence << " - value: " << event.get_value();
         if (endOfBatch) {
             std::cout << " (end of batch)";
         }
@@ -30,8 +31,10 @@ void run_single_sequencer() {
         std::this_thread::sleep_for(std::chrono::milliseconds(1000));
     };
     constexpr size_t NUMBER_DEPENDENT_SEQUENCES = 1;
-    disruptor::ProcessingSequenceBarrier<WaitStrategyType::BUSY_SPIN, NUMBER_DEPENDENT_SEQUENCES> sequence_barrier_1(true, {cursor_sequencer}, sequencer);
-    disruptor::BatchEventProcessor<disruptor::Event, ring_buffer_size> processor_1(sequence_barrier_1, eventHandler_1, ring_buffer);
+    disruptor::ProcessingSequenceBarrier<WaitStrategyType::BUSY_SPIN, NUMBER_DEPENDENT_SEQUENCES> sequence_barrier_1(
+        true, {cursor_sequencer}, sequencer);
+    disruptor::BatchEventProcessor<disruptor::Event, ring_buffer_size> processor_1(
+        sequence_barrier_1, eventHandler_1, ring_buffer);
     std::reference_wrapper<disruptor::Sequence> cursor_batch_event_processor_1 = processor_1.get_cursor();
     sequencer.add_gating_sequences({cursor_batch_event_processor_1});
     std::thread processorThread_1([&processor_1]() { processor_1.run(); });
@@ -39,15 +42,18 @@ void run_single_sequencer() {
 
     // Tạo đối tượng BatchEventProcessor
     auto eventHandler_2 = [](disruptor::Event &event, size_t sequence, bool endOfBatch) {
-        std::cout << std::format("{:%F %T}", std::chrono::system_clock::now()) << "Process B - event on sequence: " << sequence << " - value: " << event.get_value();
+        std::cout << std::format("{:%F %T}", std::chrono::system_clock::now()) << "Process B - event on sequence: " <<
+                sequence << " - value: " << event.get_value();
         if (endOfBatch) {
             std::cout << " (end of batch)";
         }
         std::cout << std::endl;
         std::this_thread::sleep_for(std::chrono::milliseconds(2678));
     };
-    disruptor::ProcessingSequenceBarrier<WaitStrategyType::BUSY_SPIN, NUMBER_DEPENDENT_SEQUENCES> sequence_barrier_2(false, {cursor_batch_event_processor_1}, sequencer);
-    disruptor::BatchEventProcessor<disruptor::Event, ring_buffer_size> processor_2(sequence_barrier_2, eventHandler_2, ring_buffer);
+    disruptor::ProcessingSequenceBarrier<WaitStrategyType::BUSY_SPIN, NUMBER_DEPENDENT_SEQUENCES> sequence_barrier_2(
+        false, {cursor_batch_event_processor_1}, sequencer);
+    disruptor::BatchEventProcessor<disruptor::Event, ring_buffer_size> processor_2(
+        sequence_barrier_2, eventHandler_2, ring_buffer);
     std::reference_wrapper<disruptor::Sequence> cursor_batch_event_processor_2 = processor_2.get_cursor();
     sequencer.add_gating_sequences({cursor_batch_event_processor_2});
     std::thread processorThread_2([&processor_2]() { processor_2.run(); });
@@ -75,7 +81,8 @@ void run_multiple_sequencer() {
     std::reference_wrapper<disruptor::Sequence> cursor_sequencer = sequencer.get_cursor();
 
     constexpr size_t NUMBER_DEPENDENT_SEQUENCES = 1;
-    disruptor::ProcessingSequenceBarrier<WaitStrategyType::BUSY_SPIN, NUMBER_DEPENDENT_SEQUENCES> sequence_barrier(true, {cursor_sequencer}, sequencer);
+    disruptor::ProcessingSequenceBarrier<WaitStrategyType::BUSY_SPIN, NUMBER_DEPENDENT_SEQUENCES> sequence_barrier(
+        true, {cursor_sequencer}, sequencer);
 
     // Tạo một hàm xử lý sự kiện
     auto eventHandler = [](disruptor::Event &event, const size_t sequence, const bool endOfBatch) {
@@ -89,7 +96,8 @@ void run_multiple_sequencer() {
     };
 
     // Tạo đối tượng BatchEventProcessor
-    disruptor::BatchEventProcessor<disruptor::Event, ring_buffer_size> processor(sequence_barrier, eventHandler, ring_buffer);
+    disruptor::BatchEventProcessor<disruptor::Event, ring_buffer_size> processor(
+        sequence_barrier, eventHandler, ring_buffer);
 
     std::reference_wrapper<disruptor::Sequence> cursor_batch_event_processor = processor.get_cursor();
     sequencer.add_gating_sequences({cursor_batch_event_processor});
@@ -141,8 +149,10 @@ void test_1_producer_1_consumer() {
         counter++;
     };
     constexpr size_t NUMBER_DEPENDENT_SEQUENCES = 1;
-    disruptor::ProcessingSequenceBarrier<WaitStrategyType::BUSY_SPIN, NUMBER_DEPENDENT_SEQUENCES> sequence_barrier_1(true, {cursor_sequencer}, sequencer);
-    disruptor::BatchEventProcessor<disruptor::Event, ring_buffer_size> processor_1(sequence_barrier_1, eventHandler_1, ring_buffer);
+    disruptor::ProcessingSequenceBarrier<WaitStrategyType::BUSY_SPIN, NUMBER_DEPENDENT_SEQUENCES> sequence_barrier_1(
+        true, {cursor_sequencer}, sequencer);
+    disruptor::BatchEventProcessor<disruptor::Event, ring_buffer_size> processor_1(
+        sequence_barrier_1, eventHandler_1, ring_buffer);
     std::reference_wrapper<disruptor::Sequence> cursor_batch_event_processor_1 = processor_1.get_cursor();
     sequencer.add_gating_sequences({cursor_batch_event_processor_1});
     std::thread processorThread_1([&processor_1]() { processor_1.run(); });
@@ -190,13 +200,176 @@ void test_1_producer_1_consumer() {
 }
 
 
+void test_1_producer_6_consumer() {
+    constexpr size_t BUFFER_SIZE = 1024;
+    constexpr size_t NUMBER_GATING_SEQUENCES = 6;
+    constexpr size_t NUMBER_DEPENDENT_SEQUENCES = 1;
+    constexpr size_t NUM_EVENTS = 300'000'005;
+
+    std::cout << "BUFFER_SIZE: " << BUFFER_SIZE << std::endl;
+    std::cout << "NUMBER_GATING_SEQUENCES: " << NUMBER_GATING_SEQUENCES << std::endl;
+    std::cout << "NUMBER_DEPENDENT_SEQUENCES: " << NUMBER_DEPENDENT_SEQUENCES << std::endl;
+    std::cout << "NUM_EVENTS: " << NUM_EVENTS << std::endl;
+
+    disruptor::RingBuffer<disruptor::Event, BUFFER_SIZE> ring_buffer([]() { return disruptor::Event(); });
+    disruptor::SingleProducerSequencer<disruptor::Event, BUFFER_SIZE, NUMBER_GATING_SEQUENCES> sequencer(ring_buffer);
+    std::reference_wrapper<disruptor::Sequence> cursor_sequencer = sequencer.get_cursor();
+
+
+    // Tạo đối tượng BatchEventProcessor 1
+    size_t counter_1 = 0;
+    auto eventHandler_1 = [&counter_1](disruptor::Event &event, size_t sequence, bool endOfBatch) {
+        counter_1++;
+    };
+    disruptor::ProcessingSequenceBarrier<WaitStrategyType::BUSY_SPIN, NUMBER_DEPENDENT_SEQUENCES> sequence_barrier_1(
+        true, {cursor_sequencer}, sequencer);
+    disruptor::BatchEventProcessor<disruptor::Event, BUFFER_SIZE> processor_1(
+        sequence_barrier_1, eventHandler_1, ring_buffer);
+    std::reference_wrapper<disruptor::Sequence> cursor_batch_event_processor_1 = processor_1.get_cursor();
+    std::thread processorThread_1([&processor_1]() { processor_1.run(); });
+
+
+    // Tạo đối tượng BatchEventProcessor 2
+    size_t counter_2 = 0;
+    auto eventHandler_2 = [&counter_2](disruptor::Event &event, size_t sequence, bool endOfBatch) {
+        counter_2++;
+    };
+    disruptor::ProcessingSequenceBarrier<WaitStrategyType::BUSY_SPIN, NUMBER_DEPENDENT_SEQUENCES> sequence_barrier_2(
+        true, {cursor_sequencer}, sequencer);
+    disruptor::BatchEventProcessor<disruptor::Event, BUFFER_SIZE> processor_2(
+        sequence_barrier_2, eventHandler_2, ring_buffer);
+    std::reference_wrapper<disruptor::Sequence> cursor_batch_event_processor_2 = processor_2.get_cursor();
+    std::thread processorThread_2([&processor_2]() { processor_2.run(); });
+
+
+    // Tạo đối tượng BatchEventProcessor 3
+    size_t counter_3 = 0;
+    auto eventHandler_3 = [&counter_3](disruptor::Event &event, size_t sequence, bool endOfBatch) {
+        counter_3++;
+    };
+    disruptor::ProcessingSequenceBarrier<WaitStrategyType::BUSY_SPIN, NUMBER_DEPENDENT_SEQUENCES> sequence_barrier_3(
+        true, {cursor_sequencer}, sequencer);
+    disruptor::BatchEventProcessor<disruptor::Event, BUFFER_SIZE> processor_3(
+        sequence_barrier_3, eventHandler_3, ring_buffer);
+    std::reference_wrapper<disruptor::Sequence> cursor_batch_event_processor_3 = processor_3.get_cursor();
+    std::thread processorThread_3([&processor_3]() { processor_3.run(); });
+
+
+    // Tạo đối tượng BatchEventProcessor 4
+    size_t counter_4 = 0;
+    auto eventHandler_4 = [&counter_4](disruptor::Event &event, size_t sequence, bool endOfBatch) {
+        counter_4++;
+    };
+    disruptor::ProcessingSequenceBarrier<WaitStrategyType::BUSY_SPIN, NUMBER_DEPENDENT_SEQUENCES> sequence_barrier_4(
+        true, {cursor_sequencer}, sequencer);
+    disruptor::BatchEventProcessor<disruptor::Event, BUFFER_SIZE> processor_4(
+        sequence_barrier_4, eventHandler_4, ring_buffer);
+    std::reference_wrapper<disruptor::Sequence> cursor_batch_event_processor_4 = processor_4.get_cursor();
+    std::thread processorThread_4([&processor_4]() { processor_4.run(); });
+
+
+    // Tạo đối tượng BatchEventProcessor 5
+    size_t counter_5 = 0;
+    auto eventHandler_5 = [&counter_5](disruptor::Event &event, size_t sequence, bool endOfBatch) {
+        counter_5++;
+    };
+    disruptor::ProcessingSequenceBarrier<WaitStrategyType::BUSY_SPIN, NUMBER_DEPENDENT_SEQUENCES> sequence_barrier_5(
+        true, {cursor_sequencer}, sequencer);
+    disruptor::BatchEventProcessor<disruptor::Event, BUFFER_SIZE> processor_5(
+        sequence_barrier_5, eventHandler_5, ring_buffer);
+    std::reference_wrapper<disruptor::Sequence> cursor_batch_event_processor_5 = processor_5.get_cursor();
+    std::thread processorThread_5([&processor_5]() { processor_5.run(); });
+
+
+    // Tạo đối tượng BatchEventProcessor 6
+    size_t counter_6 = 0;
+    auto eventHandler_6 = [&counter_6](disruptor::Event &event, size_t sequence, bool endOfBatch) {
+        counter_6++;
+    };
+    disruptor::ProcessingSequenceBarrier<WaitStrategyType::BUSY_SPIN, NUMBER_DEPENDENT_SEQUENCES> sequence_barrier_6(
+        true, {cursor_sequencer}, sequencer);
+    disruptor::BatchEventProcessor<disruptor::Event, BUFFER_SIZE> processor_6(
+        sequence_barrier_6, eventHandler_6, ring_buffer);
+    std::reference_wrapper<disruptor::Sequence> cursor_batch_event_processor_6 = processor_6.get_cursor();
+    std::thread processorThread_6([&processor_6]() { processor_6.run(); });
+
+
+    sequencer.add_gating_sequences({
+        cursor_batch_event_processor_1, cursor_batch_event_processor_2, cursor_batch_event_processor_3, cursor_batch_event_processor_4,
+        cursor_batch_event_processor_5, cursor_batch_event_processor_6
+    });
+
+    // Đợi consumer khởi động
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+    auto start_time = std::chrono::high_resolution_clock::now();
+    for (size_t i = 0; i < NUM_EVENTS; ++i) {
+        const size_t claimed_sequence = sequencer.next();
+        disruptor::Event &event = ring_buffer.get(claimed_sequence);
+        event.set_value(claimed_sequence);
+        sequencer.publish(claimed_sequence);
+    }
+    auto end_time = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
+
+
+    // wait consumer 1
+    while (counter_1 < NUM_EVENTS) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+    processor_1.halt();
+    processorThread_1.join();
+
+    // wait consumer 2
+    while (counter_2 < NUM_EVENTS) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
+    processor_2.halt();
+    processorThread_2.join();
+
+    // wait consumer 3
+    while (counter_3 < NUM_EVENTS) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+    processor_3.halt();
+    processorThread_3.join();
+
+    // wait consumer 4
+    while (counter_4 < NUM_EVENTS) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+    processor_4.halt();
+    processorThread_4.join();
+
+    // wait consumer 5
+    while (counter_5 < NUM_EVENTS) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+    processor_5.halt();
+    processorThread_5.join();
+
+    // wait consumer 6
+    while (counter_6 < NUM_EVENTS) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+    processor_6.halt();
+    processorThread_6.join();
+
+
+    double seconds = duration.count() / 1000.0;
+    double events_per_second = NUM_EVENTS / seconds;
+    std::cout << "Time: " << std::fixed << std::setprecision(3) << seconds << " s" << std::endl;
+    std::cout << "Rate: " << std::fixed << std::setprecision(0) << events_per_second << " event/s" << std::endl;
+}
+
+
 int main() {
     // kiểm tra hệ thống có đủ điều kiện ko
     disruptor::Util::require_for_system_run_stable();
 
 
     // run_single_sequencer();
-    test_1_producer_1_consumer();
+    test_1_producer_6_consumer();
 
 
     return 0;
