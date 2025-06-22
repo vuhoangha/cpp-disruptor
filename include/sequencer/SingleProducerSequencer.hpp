@@ -52,7 +52,7 @@ namespace disruptor {
 
             if (gating_sequences.get_cache() < wrap_point) {
                 while (wrap_point > gating_sequences.get()) {
-                    std::this_thread::sleep_for(std::chrono::nanoseconds(1));
+                    std::this_thread::yield();
                 }
             }
 

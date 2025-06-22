@@ -1,3 +1,4 @@
+#include <iomanip>
 #include <iostream>
 
 #include "../include/processor/BatchEventProcessor.hpp"
@@ -147,7 +148,7 @@ void test_1_producer_1_consumer() {
     std::thread processorThread_1([&processor_1]() { processor_1.run(); });
 
     // Số lượng sự kiện sẽ được gửi
-    constexpr size_t NUM_EVENTS = 100'000'000;
+    constexpr size_t NUM_EVENTS = 10'000'000'004;
 
     // Đợi consumer khởi động
     std::this_thread::sleep_for(std::chrono::milliseconds(100));

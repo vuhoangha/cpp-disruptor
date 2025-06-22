@@ -2,9 +2,9 @@
 
 #include <string>
 #include <cassert>
-#include <format>
 #include <atomic>
 #include <array>
+#include <format>
 
 #include "Sequence.hpp"
 
