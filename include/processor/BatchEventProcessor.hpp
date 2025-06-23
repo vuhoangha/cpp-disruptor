@@ -43,7 +43,7 @@ namespace disruptor {
             sequence_barrier.clear_alert();
             process_events();
         }
-
+        
 
         void process_events() {
             size_t next_sequence = sequence.get() + 1;
@@ -51,6 +51,13 @@ namespace disruptor {
             while (true) {
                 try {
                     const size_t available_sequence = sequence_barrier.wait_for(next_sequence);
+
+                    // if multi_producer_sequencer, sequence was claimed but not publish --> available_sequence = next_sequence - 1
+                    if (available_sequence < next_sequence) {
+                        std::this_thread::yield();
+                        continue;
+                    }
+
                     while (next_sequence <= available_sequence) {
                         T &event = ring_buffer.get(next_sequence);
                         event_handler(event, next_sequence, next_sequence == available_sequence);
