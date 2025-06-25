@@ -7,9 +7,8 @@
 #include "../sequencer/Sequencer.hpp"
 #include "../exception/AlertException.hpp"
 #include "../wait_strategy/WaitStrategyType.hpp"
-#include "../wait_strategy/BusySpinWaitStrategy.hpp"
+#include "../wait_strategy/AdaptiveWaitStrategy.hpp"
 #include "../sequence/SequenceGroupForSingleThread.hpp"
-#include "../wait_strategy/SleepingWaitStrategy.hpp"
 #include "../wait_strategy/YieldingWaitStrategy.hpp"
 
 /**
@@ -21,13 +20,8 @@ namespace disruptor {
     struct WaitStrategySelector;
 
     template<size_t NUMBER_DEPENDENT_SEQUENCES>
-    struct WaitStrategySelector<WaitStrategyType::BUSY_SPIN, NUMBER_DEPENDENT_SEQUENCES> {
-        using type = BusySpinWaitStrategy<NUMBER_DEPENDENT_SEQUENCES>;
-    };
-
-    template<size_t NUMBER_DEPENDENT_SEQUENCES>
-    struct WaitStrategySelector<WaitStrategyType::SLEEP, NUMBER_DEPENDENT_SEQUENCES> {
-        using type = SleepingWaitStrategy<NUMBER_DEPENDENT_SEQUENCES>;
+    struct WaitStrategySelector<WaitStrategyType::ADAPTIVE, NUMBER_DEPENDENT_SEQUENCES> {
+        using type = AdaptiveWaitStrategy<NUMBER_DEPENDENT_SEQUENCES>;
     };
 
     template<size_t NUMBER_DEPENDENT_SEQUENCES>

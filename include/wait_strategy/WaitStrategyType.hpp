@@ -2,7 +2,6 @@
 
 enum class WaitStrategyType
 {
-    SLEEP,
-    BUSY_SPIN,
+    ADAPTIVE,
     YIELD,
 };

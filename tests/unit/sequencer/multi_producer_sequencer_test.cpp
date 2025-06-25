@@ -131,7 +131,7 @@ TEST_F(MultiProducerSequencerTest, ShouldProvideUniqueSequencesWithMultipleThrea
         const size_t final_sequence = initialValue + total_claims;
         size_t next_sequence_to_process = initialValue + 1;
         while (next_sequence_to_process <= final_sequence) {
-            // Busy-wait for the sequence to be published and thus available for consumption
+            // yield-wait for the sequence to be published and thus available for consumption
             while (!sequencer.is_available(next_sequence_to_process)) {
                 std::this_thread::yield(); // Yield to other threads
             }

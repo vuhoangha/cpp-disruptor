@@ -7,7 +7,7 @@
 
 namespace disruptor {
     template<size_t NUMBER_DEPENDENT_SEQUENCES>
-    class BusySpinWaitStrategy final : public WaitStrategy<NUMBER_DEPENDENT_SEQUENCES> {
+    class AdaptiveWaitStrategy final : public WaitStrategy<NUMBER_DEPENDENT_SEQUENCES> {
     public:
         [[nodiscard]] size_t wait_for(const size_t sequence,
                                       SequenceGroupForSingleThread<NUMBER_DEPENDENT_SEQUENCES> &dependent_sequences,
@@ -24,7 +24,7 @@ namespace disruptor {
         }
 
         [[nodiscard]] std::string to_string() const noexcept override {
-            return "BusySpinWaitStrategy";
+            return "AdaptiveWaitStrategy";
         }
     };
 }

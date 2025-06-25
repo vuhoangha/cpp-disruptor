@@ -15,7 +15,6 @@ using namespace disruptor;
 // Mock Sequencer cho việc kiểm thử
 class MockSequencer final : public Sequencer {
 public:
-    MOCK_METHOD(size_t, next, (), (override));
     MOCK_METHOD(size_t, next, (size_t n), (override));
     MOCK_METHOD(void, publish, (size_t sequence), (override));
     MOCK_METHOD(void, publish, (size_t lo, size_t hi), (override));
@@ -39,7 +38,7 @@ protected:
 
 // Test với direct_publisher_event_listener = true và một sequence duy nhất (cursor của sequencer)
 TEST_F(ProcessingSequenceBarrierTest, DirectListenerWithSingleSequence) {
-    ProcessingSequenceBarrier<WaitStrategyType::BUSY_SPIN, 1> barrier(
+    ProcessingSequenceBarrier<WaitStrategyType::ADAPTIVE, 1> barrier(
         true, {std::ref(sequencer_cursor)}, *sequencer);
 
     sequencer_cursor.set_with_release(10);
@@ -56,7 +55,7 @@ TEST_F(ProcessingSequenceBarrierTest, IndirectListenerWithMultipleSequences) {
     processor1_cursor.set_with_release(8);
     processor2_cursor.set_with_release(7);
 
-    ProcessingSequenceBarrier<WaitStrategyType::BUSY_SPIN, 2> barrier(
+    ProcessingSequenceBarrier<WaitStrategyType::ADAPTIVE, 2> barrier(
         false, {std::ref(processor1_cursor), std::ref(processor2_cursor)}, *sequencer);
 
     std::thread update_thread([this]() {
@@ -79,7 +78,7 @@ TEST_F(ProcessingSequenceBarrierTest, DirectListenerWithSequencerUpdate) {
     sequencer_cursor.set_with_release(5);
 
     // Khởi tạo barrier với direct_publisher_event_listener = true
-    ProcessingSequenceBarrier<WaitStrategyType::BUSY_SPIN, 1> barrier(
+    ProcessingSequenceBarrier<WaitStrategyType::ADAPTIVE, 1> barrier(
         true, {std::ref(sequencer_cursor)}, *sequencer);
 
     // Thiết lập kỳ vọng cho get_highest_published_sequence
@@ -111,7 +110,7 @@ TEST_F(ProcessingSequenceBarrierTest, AlertDuringWait) {
     processor1_cursor.set_with_release(5);
 
     // Khởi tạo barrier
-    ProcessingSequenceBarrier<WaitStrategyType::BUSY_SPIN, 1> barrier(
+    ProcessingSequenceBarrier<WaitStrategyType::ADAPTIVE, 1> barrier(
         false, {std::ref(processor1_cursor)}, *sequencer);
 
     // Tạo thread gọi alert() sau 200ms
@@ -133,10 +132,10 @@ TEST_F(ProcessingSequenceBarrierTest, AlertDuringWait) {
 
 // Test với nhiều loại wait strategy khác nhau
 TEST_F(ProcessingSequenceBarrierTest, DifferentWaitStrategies) {
-    // Test với BusySpinWaitStrategy
+    // Test với AdaptiveWaitStrategy
     {
         processor1_cursor.set_with_release(5);
-        ProcessingSequenceBarrier<WaitStrategyType::BUSY_SPIN, 1> barrier(
+        ProcessingSequenceBarrier<WaitStrategyType::ADAPTIVE, 1> barrier(
             false, {std::ref(processor1_cursor)}, *sequencer);
 
         std::thread update_thread([this]() {
@@ -164,22 +163,6 @@ TEST_F(ProcessingSequenceBarrierTest, DifferentWaitStrategies) {
         update_thread.join();
         EXPECT_EQ(result, 16);
     }
-
-    // Test với SleepingWaitStrategy
-    {
-        processor1_cursor.set_with_release(5);
-        ProcessingSequenceBarrier<WaitStrategyType::SLEEP, 1> barrier(
-            false, {std::ref(processor1_cursor)}, *sequencer);
-
-        std::thread update_thread([this]() {
-            std::this_thread::sleep_for(std::chrono::milliseconds(200));
-            this->processor1_cursor.set_with_release(17);
-        });
-
-        const size_t result = barrier.wait_for(10);
-        update_thread.join();
-        EXPECT_EQ(result, 17);
-    }
 }
 
 // Test trường hợp nhiều dependent processor cập nhật riêng biệt
@@ -189,7 +172,7 @@ TEST_F(ProcessingSequenceBarrierTest, MultipleProcessorUpdates) {
     processor2_cursor.set_with_release(50);
 
     // Khởi tạo barrier
-    ProcessingSequenceBarrier<WaitStrategyType::BUSY_SPIN, 2> barrier(
+    ProcessingSequenceBarrier<WaitStrategyType::ADAPTIVE, 2> barrier(
         false, {std::ref(processor1_cursor), std::ref(processor2_cursor)}, *sequencer);
 
     // Tạo thread cập nhật các processor theo kiểu xen kẽ
