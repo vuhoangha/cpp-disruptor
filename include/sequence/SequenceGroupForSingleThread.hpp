@@ -115,7 +115,7 @@ namespace disruptor {
         void set_sequences(const std::initializer_list<std::reference_wrapper<Sequence> > dependent_sequences) {
             assert(dependent_sequences.size() == 1 && "Require exactly 1 sequence");
             sequence = &dependent_sequences.begin()->get();
-            cached_min_sequence = sequence->get_relaxxxx();
+            cached_min_sequence = sequence->get();
         }
 
         [[nodiscard]] size_t get() {

@@ -45,7 +45,7 @@ namespace disruptor {
         
 
         void process_events() {
-            size_t next_sequence = sequence.get_relaxxxx() + 1;
+            size_t next_sequence = sequence.get() + 1;
             int wait_counter = 0;
 
             while (true) {

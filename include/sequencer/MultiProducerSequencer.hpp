@@ -47,7 +47,7 @@ namespace disruptor {
                 throw std::invalid_argument("n must be > 0 and < bufferSize");
             }
 
-            const size_t current_sequence = cursor.get_and_add_relaxxx(n);
+            const size_t current_sequence = cursor.get_and_add(n);
             const size_t next_sequence = current_sequence + n;
             const size_t wrap_point = next_sequence - buffer_size;
 

@@ -24,7 +24,7 @@ namespace disruptor {
             return result;
         }
 
-        [[nodiscard]] size_t get_relaxxxx() const {
+        [[nodiscard]] size_t get() const {
             return value;
         }
 
@@ -33,11 +33,11 @@ namespace disruptor {
             value = newValue;
         }
 
-        void set_relaxxxx(const size_t newValue) {
+        void set(const size_t newValue) {
             value = newValue;
         }
 
-        [[nodiscard]] size_t get_and_add_relaxxx(const size_t increment) {
+        [[nodiscard]] size_t get_and_add(const size_t increment) {
             size_t origin_value;
             __asm__ __volatile__ (
                 "lock xaddq %0, %1"
