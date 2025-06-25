@@ -4,7 +4,6 @@
 
 #include "../sequence/Sequence.hpp"
 #include "../barriers/SequenceBarrier.hpp"
-#include "../exception/AlertException.hpp"
 #include "../ring_buffer/RingBuffer.hpp"
 #include "../common/Util.hpp"
 
@@ -46,7 +45,8 @@ namespace disruptor {
         
 
         void process_events() {
-            size_t next_sequence = sequence.get() + 1;
+            size_t next_sequence = sequence.get_relaxxxx() + 1;
+            int wait_counter = 0;
 
             while (true) {
                 try {
@@ -54,7 +54,7 @@ namespace disruptor {
 
                     // if multi_producer_sequencer, sequence was claimed but not publish --> available_sequence = next_sequence - 1
                     if (available_sequence < next_sequence) {
-                        std::this_thread::yield();
+                        Util::adaptive_wait(wait_counter);
                         continue;
                     }
 
@@ -64,7 +64,7 @@ namespace disruptor {
                         next_sequence++;
                     }
 
-                    sequence.set(available_sequence);
+                    sequence.set_with_release(available_sequence);
                 } catch (const std::exception &e) {
                     std::cout << "BatchEventProcessor exception caught: " << e.what() << std::endl;
                     break;

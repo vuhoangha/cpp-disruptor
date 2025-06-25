@@ -27,15 +27,12 @@ namespace disruptor {
         }
 
     public:
-        explicit SingleProducerSequencer(const RingBuffer<T, RING_BUFFER_SIZE> &ring_buffer) : ring_buffer(ring_buffer) {
+        explicit
+        SingleProducerSequencer(const RingBuffer<T, RING_BUFFER_SIZE> &ring_buffer) : ring_buffer(ring_buffer) {
         }
 
         void add_gating_sequences(const std::initializer_list<std::reference_wrapper<Sequence> > sequences) override {
             gating_sequences.set_sequences(sequences);
-        }
-
-        size_t next() override {
-            return next(1);
         }
 
         size_t next(const size_t n) override {
@@ -51,8 +48,9 @@ namespace disruptor {
             const size_t wrap_point = next_sequence - buffer_size;
 
             if (gating_sequences.get_cache() < wrap_point) {
+                int wait_counter = 0;
                 while (wrap_point > gating_sequences.get()) {
-                    std::this_thread::yield();
+                    Util::adaptive_wait(wait_counter);
                 }
             }
 
@@ -62,7 +60,7 @@ namespace disruptor {
         }
 
         void publish(const size_t sequence) override {
-            cursor.set(sequence);
+            cursor.set_with_release(sequence);
         }
 
         void publish(const size_t lo, const size_t hi) override {
@@ -70,11 +68,12 @@ namespace disruptor {
         }
 
         [[nodiscard]] bool is_available(const size_t sequence) const override {
-            const size_t current_sequence = cursor.get();
+            const size_t current_sequence = cursor.get_with_acquire();
             return sequence <= current_sequence && sequence > current_sequence - ring_buffer.get_buffer_size();
         }
 
-        [[nodiscard]] size_t get_highest_published_sequence(const size_t next_sequence, const size_t available_sequence) const override {
+        [[nodiscard]] size_t get_highest_published_sequence(const size_t next_sequence,
+                                                            const size_t available_sequence) const override {
             return available_sequence;
         }
 

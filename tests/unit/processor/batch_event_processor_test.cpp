@@ -69,7 +69,7 @@ TEST_F(BatchEventProcessorTest, Initialization) {
     BatchEventProcessor<TestEvent, BUFFER_SIZE> processor(*sequence_barrier, event_handler, *ring_buffer);
 
     // Kiểm tra giá trị ban đầu của sequence (theo Util::calculate_initial_value_sequence)
-    EXPECT_EQ(processor.get_cursor().get(), BUFFER_SIZE);
+    EXPECT_EQ(processor.get_cursor().get_with_acquire(), BUFFER_SIZE);
 }
 
 // Test xử lý một batch đơn sự kiện
@@ -123,7 +123,7 @@ TEST_F(BatchEventProcessorTest, ProcessSingleBatch) {
     EXPECT_EQ(batch_ends[0], BUFFER_SIZE + 4);
 
     // Kiểm tra cursor đã được cập nhật
-    EXPECT_EQ(processor.get_cursor().get(), BUFFER_SIZE + 4);
+    EXPECT_EQ(processor.get_cursor().get_with_acquire(), BUFFER_SIZE + 4);
 }
 
 // Test xử lý nhiều batch sự kiện
@@ -172,7 +172,7 @@ TEST_F(BatchEventProcessorTest, ProcessMultipleBatches) {
     EXPECT_EQ(batch_ends[1], BUFFER_SIZE + 6);
 
     // Kiểm tra cursor đã được cập nhật
-    EXPECT_EQ(processor.get_cursor().get(), BUFFER_SIZE + 6);
+    EXPECT_EQ(processor.get_cursor().get_with_acquire(), BUFFER_SIZE + 6);
 }
 
 // Test halt function
@@ -213,7 +213,7 @@ TEST_F(BatchEventProcessorTest, ProcessNoEvents) {
     EXPECT_EQ(processed_values.size(), 0);
 
     // Cursor không được cập nhật (vẫn giữ giá trị ban đầu)
-    EXPECT_EQ(processor.get_cursor().get(), BUFFER_SIZE);
+    EXPECT_EQ(processor.get_cursor().get_with_acquire(), BUFFER_SIZE);
 }
 
 // Test với một event handler khác
@@ -263,7 +263,7 @@ TEST_F(BatchEventProcessorTest, CustomEventHandler) {
     EXPECT_EQ(sum, expected_sum);
 
     // Kiểm tra cursor đã được cập nhật
-    EXPECT_EQ(processor.get_cursor().get(), BUFFER_SIZE + 5);
+    EXPECT_EQ(processor.get_cursor().get_with_acquire(), BUFFER_SIZE + 5);
 }
 
 // Test xử lý khi event handler ném ngoại lệ
@@ -300,7 +300,7 @@ TEST_F(BatchEventProcessorTest, ExceptionInEventHandler) {
     EXPECT_EQ(processed_values[1], 20);
 
     // Kiểm tra cursor (chỉ được cập nhật đến điểm cuối của batch trước)
-    EXPECT_EQ(processor.get_cursor().get(), BUFFER_SIZE); // Không có batch nào hoàn thành
+    EXPECT_EQ(processor.get_cursor().get_with_acquire(), BUFFER_SIZE); // Không có batch nào hoàn thành
 }
 
 // Test với batch size lớn hơn ring buffer size
@@ -331,5 +331,5 @@ TEST_F(BatchEventProcessorTest, BatchSizeLargerThanRingBuffer) {
     ASSERT_EQ(processed_values.size(), 20);
 
     // Kiểm tra cursor đã được cập nhật
-    EXPECT_EQ(processor.get_cursor().get(), BUFFER_SIZE + 20);
+    EXPECT_EQ(processor.get_cursor().get_with_acquire(), BUFFER_SIZE + 20);
 }

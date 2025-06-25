@@ -2,8 +2,8 @@
 
 #include <string>
 #include <cassert>
-#include <format>
 #include <array>
+#include <format>
 
 #include "Sequence.hpp"
 
@@ -23,7 +23,7 @@ namespace disruptor {
             size_t minimum_sequence = INT64_MAX;
             size_t minimum_index = 0;
             for (size_t k = 0; k < sequences.size(); k++) {
-                const size_t value = sequences[k]->get();
+                const size_t value = sequences[k]->get_with_acquire();
                 if (value < minimum_sequence) {
                     minimum_sequence = value;
                     minimum_index = k;
@@ -34,7 +34,8 @@ namespace disruptor {
         }
 
     public:
-        explicit SequenceGroupForSingleThread(const std::initializer_list<std::reference_wrapper<Sequence> > dependent_sequences) {
+        explicit SequenceGroupForSingleThread(
+            const std::initializer_list<std::reference_wrapper<Sequence> > dependent_sequences) {
             set_sequences(dependent_sequences);
         }
 
@@ -45,7 +46,9 @@ namespace disruptor {
         }
 
         void set_sequences(const std::initializer_list<std::reference_wrapper<Sequence> > dependent_sequences) {
-            assert(dependent_sequences.size() == NUMBER_DEPENDENT_SEQUENCES && std::format("Require {} sequences", NUMBER_DEPENDENT_SEQUENCES).c_str());
+            assert(
+                dependent_sequences.size() == NUMBER_DEPENDENT_SEQUENCES && std::format("Require {} sequences",
+                    NUMBER_DEPENDENT_SEQUENCES).c_str());
             std::size_t i = 0;
             for (auto &ref: dependent_sequences) {
                 sequences[i++] = &ref.get();
@@ -61,14 +64,14 @@ namespace disruptor {
 
         [[nodiscard]] size_t get() {
             // check if the sequence at the index "index_min_sequence" has changed
-            if (value_min_sequence_cache == sequences[index_min_sequence_cache]->get()) {
+            if (value_min_sequence_cache == sequences[index_min_sequence_cache]->get_with_acquire()) {
                 return value_min_sequence_cache;
             }
 
             size_t index = 0;
             size_t minimum_sequence = INT64_MAX;
             for (size_t i = 0; i < sequences.size(); i++) {
-                const size_t value = sequences[i]->get();
+                const size_t value = sequences[i]->get_with_acquire();
 
                 // another sequence has a value that matches the cached value
                 if (value == value_min_sequence_cache) {
@@ -101,7 +104,8 @@ namespace disruptor {
         const char padding_5[CACHE_LINE_SIZE] = {};
 
     public:
-        explicit SequenceGroupForSingleThread(const std::initializer_list<std::reference_wrapper<Sequence> > dependent_sequences) {
+        explicit SequenceGroupForSingleThread(
+            const std::initializer_list<std::reference_wrapper<Sequence> > dependent_sequences) {
             set_sequences(dependent_sequences);
         }
 
@@ -111,10 +115,11 @@ namespace disruptor {
         void set_sequences(const std::initializer_list<std::reference_wrapper<Sequence> > dependent_sequences) {
             assert(dependent_sequences.size() == 1 && "Require exactly 1 sequence");
             sequence = &dependent_sequences.begin()->get();
+            cached_min_sequence = sequence->get_relaxxxx();
         }
 
         [[nodiscard]] size_t get() {
-            cached_min_sequence = sequence->get();
+            cached_min_sequence = sequence->get_with_acquire();
             return cached_min_sequence;
         }
 

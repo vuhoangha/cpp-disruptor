@@ -18,7 +18,7 @@ protected:
     disruptor::Sequence gatingSequence;
 
     void SetUp() override {
-        gatingSequence.set(disruptor::Util::calculate_initial_value_sequence(BUFFER_SIZE));
+        gatingSequence.set_with_release(disruptor::Util::calculate_initial_value_sequence(BUFFER_SIZE));
         sequencer.add_gating_sequences({std::ref(gatingSequence)});
     }
 };
@@ -26,14 +26,14 @@ protected:
 
 TEST_F(SingleProducerSequencerTest, ShouldStartWithInitialValue) {
     const size_t initialValue = disruptor::Util::calculate_initial_value_sequence(BUFFER_SIZE);
-    EXPECT_EQ(sequencer.get_cursor().get(), initialValue);
+    EXPECT_EQ(sequencer.get_cursor().get_with_acquire(), initialValue);
 }
 
 
 TEST_F(SingleProducerSequencerTest, ShouldClaimNextSequence) {
     const size_t initialValue = disruptor::Util::calculate_initial_value_sequence(BUFFER_SIZE);
-    EXPECT_EQ(sequencer.next(), initialValue + 1);
-    EXPECT_EQ(sequencer.get_cursor().get(), initialValue); // Cursor not updated until publish
+    EXPECT_EQ(sequencer.next(1), initialValue + 1);
+    EXPECT_EQ(sequencer.get_cursor().get_with_acquire(), initialValue); // Cursor not updated until publish
 }
 
 
@@ -41,7 +41,7 @@ TEST_F(SingleProducerSequencerTest, ShouldClaimBatchOfSequences) {
     const size_t initialValue = disruptor::Util::calculate_initial_value_sequence(BUFFER_SIZE);
     constexpr size_t batchSize = 5;
     EXPECT_EQ(sequencer.next(batchSize), initialValue + batchSize);
-    EXPECT_EQ(sequencer.get_cursor().get(), initialValue);
+    EXPECT_EQ(sequencer.get_cursor().get_with_acquire(), initialValue);
 }
 
 
@@ -52,9 +52,9 @@ TEST_F(SingleProducerSequencerTest, ShouldThrowOnInvalidBatchSize) {
 
 
 TEST_F(SingleProducerSequencerTest, ShouldPublishSequenceAndMoveCursor) {
-    const size_t sequence = sequencer.next();
+    const size_t sequence = sequencer.next(1);
     sequencer.publish(sequence);
-    EXPECT_EQ(sequencer.get_cursor().get(), sequence);
+    EXPECT_EQ(sequencer.get_cursor().get_with_acquire(), sequence);
 }
 
 
@@ -63,12 +63,12 @@ TEST_F(SingleProducerSequencerTest, ShouldPublishBatchAndMoveCursor) {
     const size_t high = sequencer.next(batchSize);
     const size_t low = high - batchSize + 1;
     sequencer.publish(low, high);
-    EXPECT_EQ(sequencer.get_cursor().get(), high);
+    EXPECT_EQ(sequencer.get_cursor().get_with_acquire(), high);
 }
 
 
 TEST_F(SingleProducerSequencerTest, ShouldCheckAvailability) {
-    const size_t sequence = sequencer.next();
+    const size_t sequence = sequencer.next(1);
     EXPECT_FALSE(sequencer.is_available(sequence));
     sequencer.publish(sequence);
     EXPECT_TRUE(sequencer.is_available(sequence));
@@ -96,12 +96,12 @@ TEST_F(SingleProducerSequencerTest, ShouldBlockWhenGatingSequenceIsBehind) {
         producer_was_blocked = false;
 
         // Giả lập consumer đã xử lý xong và di chuyển gating sequence để giải phóng buffer
-        gatingSequence.set(nextSequence - BUFFER_SIZE + 1);
+        gatingSequence.set_with_release(nextSequence - BUFFER_SIZE + 1);
     });
 
     // 3. Lệnh gọi next() này sẽ bị khóa lại vì buffer đã đầy
     // Nó sẽ chỉ được giải phóng khi consumer_thread ở trên cập nhật gatingSequence
-    sequencer.next();
+    sequencer.next(1);
 
     consumer_thread.join();
     // Xác nhận lại lần cuối rằng producer đã từng bị khóa và sau đó được giải phóng
@@ -113,12 +113,12 @@ TEST_F(SingleProducerSequencerTest, ShouldFailWhenAccessedByMultipleThreads) {
     // Biểu thức chính gây ra lỗi assertion
     auto multi_threaded_access = [&]() {
         // Thread chính (producer 1) truy cập trước để đăng ký thread ID của nó
-        sequencer.next();
+        sequencer.next(1);
 
         // Một thread khác (producer 2) cố gắng truy cập
         std::thread second_producer_thread([&] {
             // Lệnh gọi này sẽ vi phạm quy tắc single producer và gây ra assertion failed
-            sequencer.next();
+            sequencer.next(1);
         });
 
         second_producer_thread.join();

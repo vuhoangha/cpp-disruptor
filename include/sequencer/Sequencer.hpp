@@ -16,8 +16,6 @@ namespace disruptor {
 
         [[nodiscard]] virtual size_t get_highest_published_sequence(size_t next_sequence, size_t available_sequence) const = 0;
 
-        virtual size_t next() = 0;
-
         virtual size_t next(size_t n) = 0;
 
         virtual void publish(size_t sequence) = 0;

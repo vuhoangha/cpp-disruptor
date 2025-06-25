@@ -1,0 +1,19 @@
+# Sequence cache line 128
+NUM_EVENTS_PER_PRODUCER = 50'000'000
+Yield only
+
+- 1P1C: 10M
+- 2P1C: 13M
+- 3P1C: 13.5M
+- 4P1C: 18.5M
+- 5P1C: 21M
+
+# Lmax Disruptor
+NUM_EVENTS_PER_PRODUCER = 50'000'000
+Yield only
+
+- 1P1C: 7M
+- 2P1C: 10M
+- 3P1C: 11.5M
+- 4P1C: 16M
+- 5P1C: 19M

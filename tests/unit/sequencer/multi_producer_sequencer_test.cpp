@@ -13,27 +13,27 @@ protected:
     disruptor::Sequence gatingSequence;
 
     void SetUp() override {
-        gatingSequence.set(disruptor::Util::calculate_initial_value_sequence(BUFFER_SIZE));
+        gatingSequence.set_with_release(disruptor::Util::calculate_initial_value_sequence(BUFFER_SIZE));
         sequencer.add_gating_sequences({std::ref(gatingSequence)});
     }
 };
 
 TEST_F(MultiProducerSequencerTest, ShouldStartWithInitialValue) {
     const size_t initialValue = disruptor::Util::calculate_initial_value_sequence(BUFFER_SIZE);
-    EXPECT_EQ(sequencer.get_cursor().get(), initialValue);
+    EXPECT_EQ(sequencer.get_cursor().get_with_acquire(), initialValue);
 }
 
 TEST_F(MultiProducerSequencerTest, ShouldClaimNextSequence) {
     const size_t initialValue = disruptor::Util::calculate_initial_value_sequence(BUFFER_SIZE);
-    EXPECT_EQ(sequencer.next(), initialValue + 1);
-    EXPECT_EQ(sequencer.get_cursor().get(), initialValue + 1);
+    EXPECT_EQ(sequencer.next(1), initialValue + 1);
+    EXPECT_EQ(sequencer.get_cursor().get_with_acquire(), initialValue + 1);
 }
 
 TEST_F(MultiProducerSequencerTest, ShouldClaimBatchOfSequences) {
     const size_t initialValue = disruptor::Util::calculate_initial_value_sequence(BUFFER_SIZE);
     constexpr size_t batchSize = 5;
     EXPECT_EQ(sequencer.next(batchSize), initialValue + batchSize);
-    EXPECT_EQ(sequencer.get_cursor().get(), initialValue + batchSize);
+    EXPECT_EQ(sequencer.get_cursor().get_with_acquire(), initialValue + batchSize);
 }
 
 TEST_F(MultiProducerSequencerTest, ShouldThrowOnInvalidBatchSize) {
@@ -42,7 +42,7 @@ TEST_F(MultiProducerSequencerTest, ShouldThrowOnInvalidBatchSize) {
 }
 
 TEST_F(MultiProducerSequencerTest, ShouldPublishAndMakeSequenceAvailable) {
-    const size_t sequence = sequencer.next();
+    const size_t sequence = sequencer.next(1);
 
     ASSERT_FALSE(sequencer.is_available(sequence)); // Chưa publish
 
@@ -76,11 +76,11 @@ TEST_F(MultiProducerSequencerTest, ShouldBlockWhenGatingSequenceIsBehind) {
 
         // consumer process an event
         producer_was_blocked = false;
-        gatingSequence.set(sequencer.get_cursor().get() - BUFFER_SIZE + 1);
+        gatingSequence.set_with_release(sequencer.get_cursor().get_with_acquire() - BUFFER_SIZE + 1);
     });
 
     // wait space in ring buffer
-    sequencer.next();
+    sequencer.next(1);
 
     consumer_thread.join();
     ASSERT_FALSE(producer_was_blocked.load());
@@ -136,7 +136,7 @@ TEST_F(MultiProducerSequencerTest, ShouldProvideUniqueSequencesWithMultipleThrea
                 std::this_thread::yield(); // Yield to other threads
             }
             // Move the gating sequence forward, signaling that the slot can be reclaimed
-            gatingSequence.set(next_sequence_to_process);
+            gatingSequence.set_with_release(next_sequence_to_process);
             next_sequence_to_process++;
         }
     });
@@ -145,7 +145,7 @@ TEST_F(MultiProducerSequencerTest, ShouldProvideUniqueSequencesWithMultipleThrea
         producers.emplace_back([&, i] {
             claimed_sequences_per_thread[i].reserve(iterations_per_thread);
             for (int j = 0; j < iterations_per_thread; ++j) {
-                size_t claimed_sequence = sequencer.next();
+                size_t claimed_sequence = sequencer.next(1);
                 claimed_sequences_per_thread[i].push_back(claimed_sequence);
                 sequencer.publish(claimed_sequence);
             }
@@ -167,7 +167,7 @@ TEST_F(MultiProducerSequencerTest, ShouldProvideUniqueSequencesWithMultipleThrea
     }
 
     ASSERT_EQ(all_claimed_sequences.size(), total_claims);
-    EXPECT_EQ(sequencer.get_cursor().get(), initialValue + total_claims);
+    EXPECT_EQ(sequencer.get_cursor().get_with_acquire(), initialValue + total_claims);
 
     // B. check availability status after publishing
     const size_t highest_sequence = initialValue + total_claims;
@@ -192,5 +192,5 @@ TEST_F(MultiProducerSequencerTest, ShouldProvideUniqueSequencesWithMultipleThrea
     const size_t wrapped_sequence_plus_one = highest_sequence - BUFFER_SIZE + 1;
     ASSERT_TRUE(sequencer.is_available(wrapped_sequence_plus_one));
 
-    ASSERT_EQ(gatingSequence.get(), highest_sequence);
+    ASSERT_EQ(gatingSequence.get_with_acquire(), highest_sequence);
 }

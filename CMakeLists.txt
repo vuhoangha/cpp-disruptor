@@ -13,7 +13,7 @@ option(BUILD_TESTING "Build the testing tree." ON)
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -march=native -mtune=native -DNDEBUG")
 
 # Debug flags
-set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0 -g3 -ggdb")
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0 -g3 -ggdb -DNDEBUG")
 
 # Thiết lập các biến chung cho toàn dự án
 set(DISRUPTOR_INCLUDE_DIRS

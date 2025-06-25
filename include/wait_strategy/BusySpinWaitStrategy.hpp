@@ -1,33 +1,29 @@
 #pragma once
 
-#include <thread>
 #include <string>
 #include "WaitStrategy.hpp"
 #include "../barriers/SequenceBarrier.hpp"
+#include "Util.hpp"
 
-namespace disruptor
-{
-    template <size_t NUMBER_DEPENDENT_SEQUENCES>
-    class BusySpinWaitStrategy final : public WaitStrategy<NUMBER_DEPENDENT_SEQUENCES>
-    {
+namespace disruptor {
+    template<size_t NUMBER_DEPENDENT_SEQUENCES>
+    class BusySpinWaitStrategy final : public WaitStrategy<NUMBER_DEPENDENT_SEQUENCES> {
     public:
         [[nodiscard]] size_t wait_for(const size_t sequence,
                                       SequenceGroupForSingleThread<NUMBER_DEPENDENT_SEQUENCES> &dependent_sequences,
-                                      const SequenceBarrier &barrier) override
-        {
+                                      const SequenceBarrier &barrier) override {
             size_t available_sequence;
+            int wait_counter = 0;
 
-            while ((available_sequence = dependent_sequences.get()) < sequence)
-            {
+            while ((available_sequence = dependent_sequences.get()) < sequence) {
                 barrier.check_alert();
-                std::this_thread::yield();
+                Util::adaptive_wait(wait_counter);
             }
 
             return available_sequence;
         }
 
-        [[nodiscard]] std::string to_string() const noexcept override
-        {
+        [[nodiscard]] std::string to_string() const noexcept override {
             return "BusySpinWaitStrategy";
         }
     };

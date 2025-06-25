@@ -63,7 +63,7 @@ void run_single_sequencer() {
 
 
     while (true) {
-        const size_t claimed_sequence = sequencer.next();
+        const size_t claimed_sequence = sequencer.next(1);
         disruptor::Event &event = ring_buffer.get(claimed_sequence);
         event.set_value(claimed_sequence);
         sequencer.publish(claimed_sequence);
@@ -110,7 +110,7 @@ void run_multiple_sequencer() {
 
     std::thread producer_1_thread([&sequencer, &ring_buffer]() {
         while (true) {
-            const size_t claimed_sequence = sequencer.next();
+            const size_t claimed_sequence = sequencer.next(1);
             disruptor::Event &event = ring_buffer.get(claimed_sequence);
             event.set_value(claimed_sequence);
             sequencer.publish(claimed_sequence);
@@ -121,7 +121,7 @@ void run_multiple_sequencer() {
 
     std::thread producer_2_thread([&sequencer, &ring_buffer]() {
         while (true) {
-            const size_t claimed_sequence = sequencer.next();
+            const size_t claimed_sequence = sequencer.next(1);
             disruptor::Event &event = ring_buffer.get(claimed_sequence);
             event.set_value(claimed_sequence);
             sequencer.publish(claimed_sequence);
@@ -170,7 +170,7 @@ void test_1_producer_1_consumer() {
 
 
     for (size_t i = 0; i < NUM_EVENTS; ++i) {
-        const size_t claimed_sequence = sequencer.next();
+        const size_t claimed_sequence = sequencer.next(1);
         disruptor::Event &event = ring_buffer.get(claimed_sequence);
         event.set_value(claimed_sequence);
         sequencer.publish(claimed_sequence);
@@ -295,7 +295,8 @@ void test_1_producer_6_consumer() {
 
 
     sequencer.add_gating_sequences({
-        cursor_batch_event_processor_1, cursor_batch_event_processor_2, cursor_batch_event_processor_3, cursor_batch_event_processor_4,
+        cursor_batch_event_processor_1, cursor_batch_event_processor_2, cursor_batch_event_processor_3,
+        cursor_batch_event_processor_4,
         cursor_batch_event_processor_5, cursor_batch_event_processor_6
     });
 
@@ -304,7 +305,7 @@ void test_1_producer_6_consumer() {
 
     auto start_time = std::chrono::high_resolution_clock::now();
     for (size_t i = 0; i < NUM_EVENTS; ++i) {
-        const size_t claimed_sequence = sequencer.next();
+        const size_t claimed_sequence = sequencer.next(1);
         disruptor::Event &event = ring_buffer.get(claimed_sequence);
         event.set_value(claimed_sequence);
         sequencer.publish(claimed_sequence);
@@ -363,14 +364,181 @@ void test_1_producer_6_consumer() {
 }
 
 
+void test_3_producer_1_consumer() {
+    constexpr size_t BUFFER_SIZE = 1 << 15;
+    constexpr size_t NUMBER_GATING_SEQUENCES = 1;
+    constexpr size_t NUMBER_DEPENDENT_SEQUENCES = 1;
+    constexpr size_t NUM_EVENTS_PER_PRODUCER = 50'000'000;
+    constexpr size_t NUM_PRODUCER = 5;
+    constexpr size_t NUM_EVENTS = NUM_EVENTS_PER_PRODUCER * NUM_PRODUCER;
+
+    std::cout << "BUFFER_SIZE: " << BUFFER_SIZE << std::endl;
+    std::cout << "NUMBER_GATING_SEQUENCES: " << NUMBER_GATING_SEQUENCES << std::endl;
+    std::cout << "NUMBER_DEPENDENT_SEQUENCES: " << NUMBER_DEPENDENT_SEQUENCES << std::endl;
+    std::cout << "NUM_EVENTS_PER_PRODUCER: " << NUM_EVENTS_PER_PRODUCER << std::endl;
+    std::cout << "NUM_PRODUCER: " << NUM_PRODUCER << std::endl;
+    std::cout << "NUM_EVENTS: " << NUM_EVENTS << std::endl;
+
+    disruptor::RingBuffer<disruptor::Event, BUFFER_SIZE> ring_buffer([]() { return disruptor::Event(); });
+    disruptor::MultiProducerSequencer<disruptor::Event, BUFFER_SIZE, NUMBER_GATING_SEQUENCES> sequencer(ring_buffer);
+    std::reference_wrapper<disruptor::Sequence> cursor_sequencer = sequencer.get_cursor();
+
+
+    // Tạo đối tượng BatchEventProcessor 1
+    size_t counter_1 = 0;
+    auto eventHandler_1 = [&counter_1](disruptor::Event &event, size_t sequence, bool endOfBatch) {
+        counter_1++;
+    };
+    disruptor::ProcessingSequenceBarrier<WaitStrategyType::BUSY_SPIN, NUMBER_DEPENDENT_SEQUENCES> sequence_barrier_1(
+        true, {cursor_sequencer}, sequencer);
+    disruptor::BatchEventProcessor<disruptor::Event, BUFFER_SIZE> processor_1(
+        sequence_barrier_1, eventHandler_1, ring_buffer);
+    std::reference_wrapper<disruptor::Sequence> cursor_batch_event_processor_1 = processor_1.get_cursor();
+    std::thread processorThread_1([&processor_1]() { processor_1.run(); });
+
+
+    sequencer.add_gating_sequences({
+        cursor_batch_event_processor_1
+    });
+
+    // Đợi consumer khởi động
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+
+    auto start_time = std::chrono::high_resolution_clock::now();
+
+    std::vector<std::thread> producer_threads;
+    for (int i = 0; i < NUM_PRODUCER; ++i) {
+        producer_threads.emplace_back([&sequencer, &ring_buffer, &NUM_EVENTS_PER_PRODUCER, i]() {
+            std::cout << "Producer " << i << " started" << std::endl;
+            for (size_t j = 0; j < NUM_EVENTS_PER_PRODUCER; ++j) {
+                const size_t claimed_sequence = sequencer.next(1);
+                disruptor::Event &event = ring_buffer.get(claimed_sequence);
+                event.set_value(claimed_sequence);
+                sequencer.publish(claimed_sequence);
+            }
+            std::cout << "Producer " << i << " finished" << std::endl;
+        });
+    }
+    for (auto &thread: producer_threads) {
+        if (thread.joinable()) {
+            thread.join();
+        }
+    }
+
+    auto end_time = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
+
+
+    // wait consumer 1
+    while (counter_1 < NUM_EVENTS) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+    processor_1.halt();
+    processorThread_1.join();
+
+
+    double seconds = duration.count() / 1000.0;
+    double events_per_second = NUM_EVENTS / seconds;
+    std::cout.imbue(std::locale("en_US.UTF-8"));
+    std::cout << "Time: " << std::fixed << std::setprecision(3) << seconds << " s" << std::endl;
+    std::cout << "Rate: " << std::fixed << std::setprecision(0) << events_per_second << " event/s" << std::endl;
+}
+
+
+void test_atomic() {
+    constexpr uint64_t NUM_ITERATIONS = 500'000'000; // 1 tỷ
+    std::atomic<uint64_t> counter{0};
+
+    auto start = std::chrono::high_resolution_clock::now();
+
+    for (uint64_t i = 0; i < NUM_ITERATIONS; ++i) {
+        // counter.fetch_add(1, std::memory_order_relaxed);
+        // counter.fetch_add(1, std::memory_order_release);
+        // counter.store(i, std::memory_order_release);
+        // counter.load(std::memory_order_relaxed);
+        // uint64_t aa = counter.load(std::memory_order_acquire);
+
+        // std::atomic_thread_fence(std::memory_order_release);
+        // size_t result;
+        // __asm__ __volatile__ (
+        //     "lock xaddq %0, %1"
+        //     : "=r" (result), "+m" (value)
+        //     : "0" (1)
+        //     : "memory"
+        // );
+        // int a = 1;
+
+        // size_t value1 = value;
+        // std::atomic_thread_fence(std::memory_order_acquire);
+
+        // std::atomic_thread_fence(std::memory_order_release);
+        // value = i;
+    }
+
+    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> elapsed = end - start;
+    double seconds = elapsed.count();
+
+    double rate = NUM_ITERATIONS / seconds;
+
+    // Thiết lập locale để in số có dấu phẩy phân tách
+    std::cout.imbue(std::locale("en_US.UTF-8"));
+    std::cout << "Processed: " << NUM_ITERATIONS << " fetch_add calls in "
+            << seconds << " seconds\n";
+    std::cout << "Rate: " << std::fixed << std::setprecision(0)
+            << rate << " ops/sec" << std::endl;
+}
+
+
+void test_custom_atomic() {
+    constexpr uint64_t NUM_ITERATIONS = 500'000'000; // 1 tỷ
+    volatile int counter = 0;
+
+    auto start = std::chrono::high_resolution_clock::now();
+
+    for (uint64_t i = 0; i < NUM_ITERATIONS; ++i) {
+        // counter.fetch_add(1, std::memory_order_relaxed);
+        // counter.fetch_add(1, std::memory_order_release);
+        // counter.store(i, std::memory_order_release);
+        // counter.load(std::memory_order_relaxed);
+        // __atomic_fetch_add(&counter, 1, __ATOMIC_RELAXED);
+        // __sync_fetch_and_add(&counter, 1);
+
+        int result;
+        asm volatile (
+            "movl $1, %0\n\t"
+            "lock xaddl %0, %1"
+            : "=&r" (result), "+m" (counter)
+            :
+            : "memory"
+        );
+    }
+
+    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> elapsed = end - start;
+    double seconds = elapsed.count();
+
+    double rate = NUM_ITERATIONS / seconds;
+
+    // Thiết lập locale để in số có dấu phẩy phân tách
+    std::cout.imbue(std::locale("en_US.UTF-8"));
+    std::cout << "Processed: " << NUM_ITERATIONS << " fetch_add calls in "
+            << seconds << " seconds\n";
+    std::cout << "Rate: " << std::fixed << std::setprecision(0)
+            << rate << " ops/sec" << std::endl;
+}
+
+
 int main() {
     // kiểm tra hệ thống có đủ điều kiện ko
     disruptor::Util::require_for_system_run_stable();
 
 
     // run_single_sequencer();
-    test_1_producer_6_consumer();
-
+    test_3_producer_1_consumer();
+    // test_1_producer_6_consumer();
+    // test_atomic();
+    // test_custom_atomic();
 
     return 0;
 }

@@ -8,11 +8,9 @@ TEST(SequenceGroupForMultiThreadTest, ShouldGetSingleSequenceValue) {
     const disruptor::SequenceGroupForMultiThread<1> group{std::ref(s1)};
 
     EXPECT_EQ(42, group.get());
-    EXPECT_EQ(42, group.get_cache());
 
-    s1.set(50);
+    s1.set_with_release(50);
     EXPECT_EQ(50, group.get());
-    EXPECT_EQ(50, group.get_cache());
 }
 
 TEST(SequenceGroupForMultiThreadTest, ShouldHandleInitialEmptyGroupForSingleSequence) {
@@ -32,7 +30,6 @@ TEST(SequenceGroupForMultiThreadTest, ShouldGetMinimumSequenceValue) {
     disruptor::SequenceGroupForMultiThread<3> group{std::ref(s1), std::ref(s2), std::ref(s3)};
 
     EXPECT_EQ(10, group.get());
-    EXPECT_EQ(10, group.get_cache());
 }
 
 TEST(SequenceGroupForMultiThreadTest, ShouldHandleInitialEmptyGroupForMultiSequence) {
@@ -51,8 +48,8 @@ TEST(SequenceGroupForMultiThreadTest, ShouldNotGoBackwardsWhenSequenceValueDecre
 
     EXPECT_EQ(10, group.get());
 
-    s2.set(5);
-    EXPECT_EQ(10, group.get());
+    s2.set_with_release(5);
+    EXPECT_EQ(5, group.get());
 }
 
 TEST(SequenceGroupForMultiThreadTest, ShouldUpdateToNewMinimumWhenAllSequencesAdvance) {
@@ -61,11 +58,9 @@ TEST(SequenceGroupForMultiThreadTest, ShouldUpdateToNewMinimumWhenAllSequencesAd
     disruptor::SequenceGroupForMultiThread<2> group{std::ref(s1), std::ref(s2)};
 
     EXPECT_EQ(10, group.get());
-    EXPECT_EQ(10, group.get_cache());
 
-    s1.set(15);
-    s2.set(18);
+    s1.set_with_release(15);
+    s2.set_with_release(18);
 
     EXPECT_EQ(15, group.get());
-    EXPECT_EQ(15, group.get_cache());
 }

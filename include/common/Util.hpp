@@ -4,7 +4,6 @@
 #include <cstdint>
 #include <chrono>
 #include <condition_variable>
-#include <mutex>
 
 namespace disruptor {
     class Util {
@@ -40,6 +39,23 @@ namespace disruptor {
         }
 
 
+        static void cpu_pause() noexcept {
+#if defined(__x86_64__) || defined(__i386__)
+            // GCC inline assembly - BEST cho Linux x86/x64
+            __asm__ __volatile__("pause" ::: "memory");
+#elif defined(__aarch64__)
+            // ARM64 Linux
+            __asm__ __volatile__("yield" ::: "memory");
+#elif defined(__arm__)
+            // ARM32 Linux
+            __asm__ __volatile__("yield" ::: "memory");
+#else
+            // Fallback
+            std::this_thread::yield();
+#endif
+        }
+
+
         static void check_size_t_size() {
             if constexpr (sizeof(size_t) != 8) {
                 std::cerr << "WARNING: Size of size_t: " << sizeof(size_t)
@@ -70,6 +86,27 @@ namespace disruptor {
         // however, size_t is always >= 0
         static size_t calculate_initial_value_sequence(const size_t buffer_size) {
             return buffer_size;
+        }
+
+
+        [[gnu::hot]]
+        static void adaptive_wait(int &wait_counter) noexcept {
+            static constexpr int SPIN_TRIES = 100;
+            static constexpr int YIELD_TRIES = 10;
+            static constexpr auto PARK_DURATION = std::chrono::nanoseconds(1);
+
+            if (wait_counter < SPIN_TRIES) [[likely]] {
+                // Phase 1: Spin-wait (no context switch)
+                cpu_pause(); // x86 PAUSE instruction
+                wait_counter++;
+            } else if (wait_counter < SPIN_TRIES + YIELD_TRIES) [[likely]] {
+                // Phase 2: Yield (light context switch)
+                std::this_thread::yield();
+                wait_counter++;
+            } else [[unlikely]] {
+                std::this_thread::sleep_for(PARK_DURATION);
+                wait_counter = SPIN_TRIES;
+            }
         }
     };
 }

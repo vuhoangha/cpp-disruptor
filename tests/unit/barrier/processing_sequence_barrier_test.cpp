@@ -28,7 +28,7 @@ class ProcessingSequenceBarrierTest : public Test {
 protected:
     void SetUp() override {
         sequencer = std::make_unique<MockSequencer>();
-        sequencer_cursor.set(0); // Khởi tạo cursor của sequencer
+        sequencer_cursor.set_with_release(0); // Khởi tạo cursor của sequencer
     }
 
     std::unique_ptr<MockSequencer> sequencer;
@@ -42,7 +42,7 @@ TEST_F(ProcessingSequenceBarrierTest, DirectListenerWithSingleSequence) {
     ProcessingSequenceBarrier<WaitStrategyType::BUSY_SPIN, 1> barrier(
         true, {std::ref(sequencer_cursor)}, *sequencer);
 
-    sequencer_cursor.set(10);
+    sequencer_cursor.set_with_release(10);
 
     EXPECT_CALL(*sequencer, get_highest_published_sequence(10, 10))
             .WillOnce(Return(10));
@@ -53,8 +53,8 @@ TEST_F(ProcessingSequenceBarrierTest, DirectListenerWithSingleSequence) {
 
 // Test với direct_publisher_event_listener = false và nhiều sequence (cursor của processor)
 TEST_F(ProcessingSequenceBarrierTest, IndirectListenerWithMultipleSequences) {
-    processor1_cursor.set(8);
-    processor2_cursor.set(7);
+    processor1_cursor.set_with_release(8);
+    processor2_cursor.set_with_release(7);
 
     ProcessingSequenceBarrier<WaitStrategyType::BUSY_SPIN, 2> barrier(
         false, {std::ref(processor1_cursor), std::ref(processor2_cursor)}, *sequencer);
@@ -62,8 +62,8 @@ TEST_F(ProcessingSequenceBarrierTest, IndirectListenerWithMultipleSequences) {
     std::thread update_thread([this]() {
         std::this_thread::sleep_for(std::chrono::milliseconds(200));
 
-        this->processor1_cursor.set(12);
-        this->processor2_cursor.set(11);
+        this->processor1_cursor.set_with_release(12);
+        this->processor2_cursor.set_with_release(11);
     });
 
     const size_t result = barrier.wait_for(10);
@@ -76,7 +76,7 @@ TEST_F(ProcessingSequenceBarrierTest, IndirectListenerWithMultipleSequences) {
 // Test với direct_publisher_event_listener = true
 TEST_F(ProcessingSequenceBarrierTest, DirectListenerWithSequencerUpdate) {
     // Thiết lập giá trị ban đầu cho sequencer_cursor
-    sequencer_cursor.set(5);
+    sequencer_cursor.set_with_release(5);
 
     // Khởi tạo barrier với direct_publisher_event_listener = true
     ProcessingSequenceBarrier<WaitStrategyType::BUSY_SPIN, 1> barrier(
@@ -92,7 +92,7 @@ TEST_F(ProcessingSequenceBarrierTest, DirectListenerWithSequencerUpdate) {
         std::this_thread::sleep_for(std::chrono::milliseconds(200));
 
         // Cập nhật sequencer_cursor lên 15
-        this->sequencer_cursor.set(15);
+        this->sequencer_cursor.set_with_release(15);
     });
 
     // Gọi wait_for từ thread chính, yêu cầu sequence 10
@@ -108,7 +108,7 @@ TEST_F(ProcessingSequenceBarrierTest, DirectListenerWithSequencerUpdate) {
 // Test alert trong khi đang wait
 TEST_F(ProcessingSequenceBarrierTest, AlertDuringWait) {
     // Thiết lập giá trị ban đầu cho processor cursor
-    processor1_cursor.set(5);
+    processor1_cursor.set_with_release(5);
 
     // Khởi tạo barrier
     ProcessingSequenceBarrier<WaitStrategyType::BUSY_SPIN, 1> barrier(
@@ -135,13 +135,13 @@ TEST_F(ProcessingSequenceBarrierTest, AlertDuringWait) {
 TEST_F(ProcessingSequenceBarrierTest, DifferentWaitStrategies) {
     // Test với BusySpinWaitStrategy
     {
-        processor1_cursor.set(5);
+        processor1_cursor.set_with_release(5);
         ProcessingSequenceBarrier<WaitStrategyType::BUSY_SPIN, 1> barrier(
             false, {std::ref(processor1_cursor)}, *sequencer);
 
         std::thread update_thread([this]() {
             std::this_thread::sleep_for(std::chrono::milliseconds(200));
-            this->processor1_cursor.set(15);
+            this->processor1_cursor.set_with_release(15);
         });
 
         const size_t result = barrier.wait_for(10);
@@ -151,13 +151,13 @@ TEST_F(ProcessingSequenceBarrierTest, DifferentWaitStrategies) {
 
     // Test với YieldingWaitStrategy
     {
-        processor1_cursor.set(5);
+        processor1_cursor.set_with_release(5);
         ProcessingSequenceBarrier<WaitStrategyType::YIELD, 1> barrier(
             false, {std::ref(processor1_cursor)}, *sequencer);
 
         std::thread update_thread([this]() {
             std::this_thread::sleep_for(std::chrono::milliseconds(200));
-            this->processor1_cursor.set(16);
+            this->processor1_cursor.set_with_release(16);
         });
 
         const size_t result = barrier.wait_for(10);
@@ -167,13 +167,13 @@ TEST_F(ProcessingSequenceBarrierTest, DifferentWaitStrategies) {
 
     // Test với SleepingWaitStrategy
     {
-        processor1_cursor.set(5);
+        processor1_cursor.set_with_release(5);
         ProcessingSequenceBarrier<WaitStrategyType::SLEEP, 1> barrier(
             false, {std::ref(processor1_cursor)}, *sequencer);
 
         std::thread update_thread([this]() {
             std::this_thread::sleep_for(std::chrono::milliseconds(200));
-            this->processor1_cursor.set(17);
+            this->processor1_cursor.set_with_release(17);
         });
 
         const size_t result = barrier.wait_for(10);
@@ -185,8 +185,8 @@ TEST_F(ProcessingSequenceBarrierTest, DifferentWaitStrategies) {
 // Test trường hợp nhiều dependent processor cập nhật riêng biệt
 TEST_F(ProcessingSequenceBarrierTest, MultipleProcessorUpdates) {
     // Thiết lập giá trị ban đầu
-    processor1_cursor.set(50);
-    processor2_cursor.set(50);
+    processor1_cursor.set_with_release(50);
+    processor2_cursor.set_with_release(50);
 
     // Khởi tạo barrier
     ProcessingSequenceBarrier<WaitStrategyType::BUSY_SPIN, 2> barrier(
@@ -196,11 +196,11 @@ TEST_F(ProcessingSequenceBarrierTest, MultipleProcessorUpdates) {
     std::thread update_thread([this]() {
         // Cập nhật processor1 trước
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        this->processor1_cursor.set(120);
+        this->processor1_cursor.set_with_release(120);
 
         // Sau đó cập nhật processor2
         std::this_thread::sleep_for(std::chrono::milliseconds(200));
-        this->processor2_cursor.set(100);
+        this->processor2_cursor.set_with_release(100);
     });
 
     // Gọi wait_for từ thread chính, yêu cầu sequence 10

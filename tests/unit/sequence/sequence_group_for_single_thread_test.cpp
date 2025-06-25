@@ -11,13 +11,13 @@ protected:
     disruptor::SequenceGroupForSingleThread<1> group;
 
     void SetUp() override {
-        s1.set(10);
+        s1.set_with_release(10);
         group.set_sequences({std::ref(s1)});
     }
 };
 
 TEST_F(SequenceGroupForSingleThreadTestOne, ShouldGetInitialCacheValue) {
-    ASSERT_EQ(group.get_cache(), 0);
+    ASSERT_EQ(group.get_cache(), 10);
 }
 
 TEST_F(SequenceGroupForSingleThreadTestOne, ShouldGetSequenceValue) {
@@ -27,7 +27,7 @@ TEST_F(SequenceGroupForSingleThreadTestOne, ShouldGetSequenceValue) {
 
 TEST_F(SequenceGroupForSingleThreadTestOne, ShouldUpdateCacheWhenSequenceChanges) {
     static_cast<void>(group.get());
-    s1.set(15);
+    s1.set_with_release(15);
     ASSERT_EQ(group.get(), 15);
     ASSERT_EQ(group.get_cache(), 15);
 }
@@ -40,9 +40,9 @@ protected:
     disruptor::SequenceGroupForSingleThread<3> group;
 
     void SetUp() override {
-        s1.set(10);
-        s2.set(20);
-        s3.set(5);
+        s1.set_with_release(10);
+        s2.set_with_release(20);
+        s3.set_with_release(5);
         group.set_sequences({std::ref(s1), std::ref(s2), std::ref(s3)});
     }
 };
@@ -58,13 +58,13 @@ TEST_F(SequenceGroupForSingleThreadTest, ShouldGetMinimumSequence) {
 
 TEST_F(SequenceGroupForSingleThreadTest, ShouldUpdateCacheWhenMinSequenceChanges) {
     static_cast<void>(group.get());
-    s3.set(15);
+    s3.set_with_release(15);
     ASSERT_EQ(group.get(), 10);
     ASSERT_EQ(group.get_cache(), 10);
 }
 
 TEST_F(SequenceGroupForSingleThreadTest, ShouldHandleSameSequenceValues) {
-    s1.set(5);
+    s1.set_with_release(5);
     static_cast<void>(group.get());
     ASSERT_EQ(group.get(), 5);
     ASSERT_EQ(group.get_cache(), 5);
