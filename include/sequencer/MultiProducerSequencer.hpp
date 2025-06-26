@@ -43,7 +43,7 @@ namespace disruptor {
         [[gnu::hot]] size_t next(const size_t n) override {
             const size_t buffer_size = ring_buffer.get_buffer_size();
 
-            if (n < 1 || n > buffer_size) {
+            if (n < 1 || n > buffer_size) [[unlikely]] {
                 throw std::invalid_argument("n must be > 0 and < bufferSize");
             }
 

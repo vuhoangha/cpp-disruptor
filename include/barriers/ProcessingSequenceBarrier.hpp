@@ -97,7 +97,7 @@ namespace disruptor {
         }
 
         [[gnu::hot]] void check_alert() const override {
-            if (alerted) {
+            if (alerted) [[unlikely]]{
                 throw AlertException();
             }
         }
