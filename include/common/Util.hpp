@@ -8,6 +8,7 @@
 namespace disruptor {
     class Util {
     public:
+        [[gnu::pure]]
         static int log_2(const int value) {
             if (value < 1) {
                 throw std::invalid_argument("value must be a positive number");
@@ -89,8 +90,7 @@ namespace disruptor {
         }
 
 
-        [[gnu::hot]]
-        static void adaptive_wait(int &wait_counter) noexcept {
+        [[gnu::hot]] static void adaptive_wait(int &wait_counter) noexcept {
             static constexpr int SPIN_TRIES = 100;
             static constexpr int YIELD_TRIES = 10;
             static constexpr auto PARK_DURATION = std::chrono::nanoseconds(1);

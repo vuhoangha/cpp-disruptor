@@ -34,7 +34,7 @@ namespace disruptor {
         alignas(CACHE_LINE_SIZE) const char padding_1[CACHE_LINE_SIZE] = {};
         using Strategy = typename WaitStrategySelector<T, NUMBER_DEPENDENT_SEQUENCES>::type;
         Strategy wait_strategy;
-        const bool direct_publisher_event_listener;     // listen directly to events from the publisher, not from any dependent processor
+        const bool direct_publisher_event_listener; // listen directly to events from the publisher, not from any dependent processor
         const char padding_2[CACHE_LINE_SIZE * 2] = {};
 
         alignas(CACHE_LINE_SIZE) SequenceGroupForSingleThread<NUMBER_DEPENDENT_SEQUENCES> dependent_sequences;
@@ -96,8 +96,8 @@ namespace disruptor {
             alerted = false;
         }
 
-        void check_alert() const override {
-            if (alerted) {
+        [[gnu::hot]] void check_alert() const override {
+            if (alerted) [[unlikely]]{
                 throw AlertException();
             }
         }

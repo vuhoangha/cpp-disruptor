@@ -40,10 +40,10 @@ namespace disruptor {
             gating_sequences.set_sequences(sequences);
         }
 
-        size_t next(const size_t n) override {
+        [[gnu::hot]] size_t next(const size_t n) override {
             const size_t buffer_size = ring_buffer.get_buffer_size();
 
-            if (n < 1 || n > buffer_size) {
+            if (n < 1 || n > buffer_size) [[unlikely]] {
                 throw std::invalid_argument("n must be > 0 and < bufferSize");
             }
 
@@ -60,7 +60,7 @@ namespace disruptor {
             return next_sequence;
         }
 
-        void publish(const size_t sequence) override {
+        [[gnu::hot]] void publish(const size_t sequence) override {
             set_available(sequence);
         }
 
@@ -76,15 +76,15 @@ namespace disruptor {
             available_buffer[index].set_with_release(flag);
         }
 
-        [[nodiscard]] size_t calculate_availability_flag(const size_t sequence) const {
+        [[gnu::pure]] [[nodiscard]] size_t calculate_availability_flag(const size_t sequence) const {
             return sequence >> index_shift;
         }
 
-        [[nodiscard]] size_t calculate_index(const size_t sequence) const {
+        [[gnu::pure]] [[nodiscard]] size_t calculate_index(const size_t sequence) const {
             return sequence & index_mask;
         }
 
-        [[nodiscard]] bool is_available(const size_t sequence) const override {
+        [[gnu::hot]] [[nodiscard]] bool is_available(const size_t sequence) const override {
             const size_t index = calculate_index(sequence);
             const size_t flag = calculate_availability_flag(sequence);
             return available_buffer[index].get_with_acquire() == flag;

@@ -18,7 +18,7 @@ namespace disruptor {
             set_with_release(initial_value);
         }
 
-        [[nodiscard]] size_t get_with_acquire() const {
+        [[gnu::hot]] [[nodiscard]] size_t get_with_acquire() const {
             size_t result = value;
             std::atomic_thread_fence(std::memory_order_acquire);
             return result;
@@ -28,7 +28,7 @@ namespace disruptor {
             return value;
         }
 
-        void set_with_release(const size_t newValue) {
+        [[gnu::hot]] void set_with_release(const size_t newValue) {
             std::atomic_thread_fence(std::memory_order_release);
             value = newValue;
         }
@@ -37,7 +37,7 @@ namespace disruptor {
             value = newValue;
         }
 
-        [[nodiscard]] size_t get_and_add(const size_t increment) {
+        [[gnu::hot]] [[nodiscard]] size_t get_and_add(const size_t increment) {
             size_t origin_value;
             __asm__ __volatile__ (
                 "lock xaddq %0, %1"

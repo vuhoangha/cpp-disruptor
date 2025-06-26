@@ -35,11 +35,11 @@ namespace disruptor {
             gating_sequences.set_sequences(sequences);
         }
 
-        size_t next(const size_t n) override {
+        [[gnu::hot]] size_t next(const size_t n) override {
             assert(same_thread() && "Accessed by two threads - use ProducerType.MULTI!");
             const size_t buffer_size = ring_buffer.get_buffer_size();
 
-            if (n < 1 || n > buffer_size) {
+            if (n < 1 || n > buffer_size) [[unlikely]] {
                 throw std::invalid_argument("n must be > 0 and < bufferSize");
             }
 
@@ -59,7 +59,7 @@ namespace disruptor {
             return next_sequence;
         }
 
-        void publish(const size_t sequence) override {
+        [[gnu::hot]] void publish(const size_t sequence) override {
             cursor.set_with_release(sequence);
         }
 

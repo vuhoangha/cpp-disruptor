@@ -58,11 +58,11 @@ namespace disruptor {
         }
 
         // get the most recent cached value
-        [[nodiscard]] size_t get_cache() const {
+        [[gnu::hot]] [[nodiscard]] size_t get_cache() const {
             return value_min_sequence_cache;
         }
 
-        [[nodiscard]] size_t get() {
+        [[gnu::hot]] [[nodiscard]] size_t get() {
             // check if the sequence at the index "index_min_sequence" has changed
             if (value_min_sequence_cache == sequences[index_min_sequence_cache]->get_with_acquire()) {
                 return value_min_sequence_cache;
@@ -118,13 +118,13 @@ namespace disruptor {
             cached_min_sequence = sequence->get();
         }
 
-        [[nodiscard]] size_t get() {
+        [[gnu::hot]] [[nodiscard]] size_t get() {
             cached_min_sequence = sequence->get_with_acquire();
             return cached_min_sequence;
         }
 
         // get the most recent cached value
-        [[nodiscard]] size_t get_cache() const {
+        [[gnu::hot]] [[nodiscard]] size_t get_cache() const {
             return cached_min_sequence;
         }
     };
