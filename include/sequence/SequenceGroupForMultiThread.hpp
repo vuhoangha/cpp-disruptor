@@ -63,7 +63,7 @@ namespace disruptor {
             sequence = &dependent_sequences.begin()->get();
         }
 
-        [[nodiscard]] size_t get() const {
+        [[gnu::hot]] [[nodiscard]] size_t get() const {
             return sequence->get_with_acquire();
         }
     };

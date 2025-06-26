@@ -26,11 +26,11 @@ namespace disruptor {
             }
         }
 
-        T &get(const size_t sequence) noexcept {
+        [[gnu::hot]] [[nodiscard]] T &get(const size_t sequence) noexcept {
             return entries[sequence & INDEX_MASK];
         }
 
-        static constexpr size_t get_buffer_size() noexcept {
+        [[gnu::pure]] [[nodiscard]] static constexpr size_t get_buffer_size() noexcept {
             return BUFFER_SIZE;
         }
     };
