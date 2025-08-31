@@ -54,6 +54,11 @@ namespace disruptor {
 
                     // if multi_producer_sequencer, sequence was claimed but not publish --> available_sequence = next_sequence - 1
                     if (available_sequence < next_sequence) {
+                        
+                        chỗ này dùng wait_counter chưa chuẩn, nó sẽ ko bao giờ về 0 được.
+                        học cách MultiProducerSequencer họ dùng là thấy
+                        tôi đang phỏng đoán thế
+
                         Util::adaptive_wait(wait_counter);
                         continue;
                     }
