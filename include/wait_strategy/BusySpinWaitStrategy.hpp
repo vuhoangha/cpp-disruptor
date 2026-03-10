@@ -11,7 +11,7 @@ namespace disruptor {
     class BusySpinWaitStrategy final {
     public:
         template<typename Barrier>
-        [[nodiscard]] size_t wait_for(const size_t sequence,
+        [[gnu::hot]] [[nodiscard]] size_t wait_for(const size_t sequence,
                                       SequenceGroupForSingleThread<NUMBER_DEPENDENT_SEQUENCES> &dependent_sequences,
                                       const Barrier &barrier) {
             size_t available_sequence;

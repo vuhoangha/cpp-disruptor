@@ -61,7 +61,7 @@ namespace disruptor {
 
         [[gnu::hot]] [[nodiscard]] size_t get() {
             // check if the sequence at the index "index_min_sequence" has changed
-            if (value_min_sequence_cache == sequences[index_min_sequence_cache]->get_with_acquire()) {
+            if (value_min_sequence_cache == sequences[index_min_sequence_cache]->get_with_acquire()) [[likely]] {
                 return value_min_sequence_cache;
             }
 

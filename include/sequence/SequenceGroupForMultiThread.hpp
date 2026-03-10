@@ -32,7 +32,7 @@ namespace disruptor {
             }
         }
 
-        [[nodiscard]] size_t get() {
+        [[gnu::hot]] [[nodiscard]] size_t get() {
             size_t minimum_sequence = std::numeric_limits<size_t>::max();
             for (const auto &sequence: sequences) {
                 const size_t value = sequence->get_with_acquire();

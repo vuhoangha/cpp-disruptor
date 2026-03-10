@@ -37,7 +37,7 @@ namespace disruptor {
         }
 
 
-        void process_events() {
+        [[gnu::hot]] void process_events() {
             size_t next_sequence = sequence.get() + 1;
             int wait_counter = 0;
 
@@ -46,7 +46,7 @@ namespace disruptor {
                     const size_t available_sequence = sequence_barrier.wait_for(next_sequence);
 
                     // Multi-producer: sequence claimed but not yet published → available_sequence < next_sequence
-                    if (available_sequence < next_sequence) {
+                    if (available_sequence < next_sequence) [[unlikely]] {
                         Util::adaptive_wait(wait_counter);
                         continue;
                     }

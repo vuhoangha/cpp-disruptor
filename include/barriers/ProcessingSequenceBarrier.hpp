@@ -75,13 +75,12 @@ namespace disruptor {
               sequencer(sequencer) {
         }
 
-        // wait for a specific sequence to be ready for processing
-        size_t wait_for(size_t sequence) {
+        [[gnu::hot]] size_t wait_for(size_t sequence) {
             assert(same_thread() && "Accessed by two threads");
             check_alert();
 
             const size_t available_sequence = wait_strategy.wait_for(sequence, dependent_sequences, *this);
-            if (available_sequence < sequence) {
+            if (available_sequence < sequence) [[unlikely]] {
                 return available_sequence;
             }
 

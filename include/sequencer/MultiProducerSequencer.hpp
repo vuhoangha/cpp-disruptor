@@ -109,10 +109,10 @@ namespace disruptor {
          * Retrieve the highest sequence that has been published for the consumer to process.
          * In a multi-producer environment, it's possible that sequence 10 has already been published by producer A, while sequence 9, handled by producer B, is still being processed.
          */
-        [[nodiscard]] size_t get_highest_published_sequence(const size_t lower_bound,
+        [[gnu::hot]] [[nodiscard]] size_t get_highest_published_sequence(const size_t lower_bound,
                                                             const size_t available_sequence) const {
             for (size_t sequence = lower_bound; sequence <= available_sequence; ++sequence) {
-                if (!is_available(sequence)) {
+                if (!is_available(sequence)) [[unlikely]] {
                     return sequence - 1;
                 }
             }
