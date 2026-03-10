@@ -30,6 +30,7 @@ set(DISRUPTOR_INCLUDE_DIRS
 
 # Thêm các thư mục con
 add_subdirectory(src)
+add_subdirectory(bench)
 
 # Thiết lập Google Test chỉ khi BUILD_TESTING=ON
 if(BUILD_TESTING)
@@ -54,6 +55,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release")
     if(ipo_supported)
         message(STATUS "IPO / LTO enabled for Release build")
         set_property(TARGET main PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
+        set_property(TARGET benchmark PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
     else()
         message(STATUS "IPO / LTO not supported")
     endif()

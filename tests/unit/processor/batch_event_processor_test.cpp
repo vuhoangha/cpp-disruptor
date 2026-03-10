@@ -66,7 +66,7 @@ protected:
 
 // Test khởi tạo BatchEventProcessor
 TEST_F(BatchEventProcessorTest, Initialization) {
-    BatchEventProcessor<TestEvent, BUFFER_SIZE> processor(*sequence_barrier, event_handler, *ring_buffer);
+    BatchEventProcessor processor(*sequence_barrier, event_handler, *ring_buffer);
 
     // Kiểm tra giá trị ban đầu của sequence (theo Util::calculate_initial_value_sequence)
     EXPECT_EQ(processor.get_cursor().get_with_acquire(), BUFFER_SIZE);
@@ -74,7 +74,7 @@ TEST_F(BatchEventProcessorTest, Initialization) {
 
 // Test xử lý một batch đơn sự kiện
 TEST_F(BatchEventProcessorTest, ProcessSingleBatch) {
-    BatchEventProcessor<TestEvent, BUFFER_SIZE> processor(*sequence_barrier, event_handler, *ring_buffer);
+    BatchEventProcessor processor(*sequence_barrier, event_handler, *ring_buffer);
 
     // Mong đợi sequence barrier sẽ được gọi với sequence BUFFER_SIZE+1
     // Và trả về sequence BUFFER_SIZE+4 (cho biết có 4 sự kiện có sẵn)
@@ -128,7 +128,7 @@ TEST_F(BatchEventProcessorTest, ProcessSingleBatch) {
 
 // Test xử lý nhiều batch sự kiện
 TEST_F(BatchEventProcessorTest, ProcessMultipleBatches) {
-    BatchEventProcessor<TestEvent, BUFFER_SIZE> processor(*sequence_barrier, event_handler, *ring_buffer);
+    BatchEventProcessor processor(*sequence_barrier, event_handler, *ring_buffer);
 
     // Mong đợi sequence barrier sẽ được gọi 3 lần với các sequence khác nhau
     EXPECT_CALL(*sequence_barrier, wait_for(BUFFER_SIZE + 1))
@@ -177,7 +177,7 @@ TEST_F(BatchEventProcessorTest, ProcessMultipleBatches) {
 
 // Test halt function
 TEST_F(BatchEventProcessorTest, HaltProcessor) {
-    BatchEventProcessor<TestEvent, BUFFER_SIZE> processor(*sequence_barrier, event_handler, *ring_buffer);
+    BatchEventProcessor processor(*sequence_barrier, event_handler, *ring_buffer);
 
     // Mong đợi sequence barrier sẽ được alert
     EXPECT_CALL(*sequence_barrier, alert())
@@ -189,7 +189,7 @@ TEST_F(BatchEventProcessorTest, HaltProcessor) {
 
 // Test xử lý khi không có sự kiện nào
 TEST_F(BatchEventProcessorTest, ProcessNoEvents) {
-    BatchEventProcessor<TestEvent, BUFFER_SIZE> processor(*sequence_barrier, event_handler, *ring_buffer);
+    BatchEventProcessor processor(*sequence_barrier, event_handler, *ring_buffer);
 
     // Mong đợi sequence barrier trả về một sequence nhỏ hơn sequence yêu cầu
     EXPECT_CALL(*sequence_barrier, wait_for(BUFFER_SIZE + 1))
@@ -230,7 +230,7 @@ TEST_F(BatchEventProcessorTest, CustomEventHandler) {
         }
     };
 
-    BatchEventProcessor<TestEvent, BUFFER_SIZE> processor(*sequence_barrier, custom_handler, *ring_buffer);
+    BatchEventProcessor processor(*sequence_barrier, custom_handler, *ring_buffer);
 
     // Mong đợi sequence barrier sẽ được gọi
     EXPECT_CALL(*sequence_barrier, wait_for(BUFFER_SIZE + 1))
@@ -279,7 +279,7 @@ TEST_F(BatchEventProcessorTest, ExceptionInEventHandler) {
         processed_sequences.push_back(sequence);
     };
 
-    BatchEventProcessor<TestEvent, BUFFER_SIZE> processor(*sequence_barrier, exception_handler, *ring_buffer);
+    BatchEventProcessor processor(*sequence_barrier, exception_handler, *ring_buffer);
 
     // Mong đợi sequence barrier sẽ được gọi
     EXPECT_CALL(*sequence_barrier, wait_for(BUFFER_SIZE + 1))
@@ -305,7 +305,7 @@ TEST_F(BatchEventProcessorTest, ExceptionInEventHandler) {
 
 // Test với batch size lớn hơn ring buffer size
 TEST_F(BatchEventProcessorTest, BatchSizeLargerThanRingBuffer) {
-    BatchEventProcessor<TestEvent, BUFFER_SIZE> processor(*sequence_barrier, event_handler, *ring_buffer);
+    BatchEventProcessor processor(*sequence_barrier, event_handler, *ring_buffer);
 
     // Mong đợi sequence barrier trả về một giá trị lớn hơn ring buffer size
     EXPECT_CALL(*sequence_barrier, wait_for(BUFFER_SIZE + 1))

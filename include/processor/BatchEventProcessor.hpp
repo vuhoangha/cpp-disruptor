@@ -1,28 +1,25 @@
 #pragma once
-#include <functional>
 #include <iostream>
 
 #include "../sequence/Sequence.hpp"
-#include "../barriers/SequenceBarrier.hpp"
 #include "../ring_buffer/RingBuffer.hpp"
 #include "../common/Util.hpp"
 
 namespace disruptor {
-    template<typename T, size_t BUFFER_SIZE>
+    template<typename T, size_t BUFFER_SIZE, typename EventHandler, typename BarrierType>
     class BatchEventProcessor final {
         Sequence sequence;
-        SequenceBarrier &sequence_barrier;
+        BarrierType &sequence_barrier;
 
-        using EventHandler = std::function<void(T &, size_t, bool)>;
         EventHandler event_handler;
 
         RingBuffer<T, BUFFER_SIZE> &ring_buffer;
 
     public:
-        explicit BatchEventProcessor(SequenceBarrier &barrier, EventHandler handler, RingBuffer<T, BUFFER_SIZE> &ring_buffer_ptr
+        explicit BatchEventProcessor(BarrierType &barrier, EventHandler handler, RingBuffer<T, BUFFER_SIZE> &ring_buffer_ptr
         ) : sequence(Util::calculate_initial_value_sequence(ring_buffer_ptr.get_buffer_size())),
             sequence_barrier(barrier),
-            event_handler(handler),
+            event_handler(std::move(handler)),
             ring_buffer(ring_buffer_ptr) {
         }
 
@@ -42,7 +39,7 @@ namespace disruptor {
             sequence_barrier.clear_alert();
             process_events();
         }
-        
+
 
         void process_events() {
             size_t next_sequence = sequence.get() + 1;
@@ -54,11 +51,7 @@ namespace disruptor {
 
                     // if multi_producer_sequencer, sequence was claimed but not publish --> available_sequence = next_sequence - 1
                     if (available_sequence < next_sequence) {
-                        
-                        chỗ này dùng wait_counter chưa chuẩn, nó sẽ ko bao giờ về 0 được.
-                        học cách MultiProducerSequencer họ dùng là thấy
-                        tôi đang phỏng đoán thế
-
+                        // TODO: wait_counter sẽ ko bao giờ về 0 được — cần xem lại logic reset
                         Util::adaptive_wait(wait_counter);
                         continue;
                     }
@@ -77,4 +70,9 @@ namespace disruptor {
             }
         }
     };
+
+    // Deduction guide
+    template<typename T, size_t BUFFER_SIZE, typename EventHandler, typename BarrierType>
+    BatchEventProcessor(BarrierType &, EventHandler, RingBuffer<T, BUFFER_SIZE> &)
+        -> BatchEventProcessor<T, BUFFER_SIZE, EventHandler, BarrierType>;
 }

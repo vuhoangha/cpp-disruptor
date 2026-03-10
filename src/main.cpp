@@ -31,9 +31,9 @@ void run_single_sequencer() {
         std::this_thread::sleep_for(std::chrono::milliseconds(1000));
     };
     constexpr size_t NUMBER_DEPENDENT_SEQUENCES = 1;
-    disruptor::ProcessingSequenceBarrier<WaitStrategyType::ADAPTIVE, NUMBER_DEPENDENT_SEQUENCES> sequence_barrier_1(
+    disruptor::ProcessingSequenceBarrier<WaitStrategyType::ADAPTIVE, NUMBER_DEPENDENT_SEQUENCES, decltype(sequencer)> sequence_barrier_1(
         true, {cursor_sequencer}, sequencer);
-    disruptor::BatchEventProcessor<disruptor::Event, ring_buffer_size> processor_1(
+    disruptor::BatchEventProcessor processor_1(
         sequence_barrier_1, eventHandler_1, ring_buffer);
     std::reference_wrapper<disruptor::Sequence> cursor_batch_event_processor_1 = processor_1.get_cursor();
     sequencer.add_gating_sequences({cursor_batch_event_processor_1});
@@ -50,9 +50,9 @@ void run_single_sequencer() {
         std::cout << std::endl;
         std::this_thread::sleep_for(std::chrono::milliseconds(2678));
     };
-    disruptor::ProcessingSequenceBarrier<WaitStrategyType::ADAPTIVE, NUMBER_DEPENDENT_SEQUENCES> sequence_barrier_2(
+    disruptor::ProcessingSequenceBarrier<WaitStrategyType::ADAPTIVE, NUMBER_DEPENDENT_SEQUENCES, decltype(sequencer)> sequence_barrier_2(
         false, {cursor_batch_event_processor_1}, sequencer);
-    disruptor::BatchEventProcessor<disruptor::Event, ring_buffer_size> processor_2(
+    disruptor::BatchEventProcessor processor_2(
         sequence_barrier_2, eventHandler_2, ring_buffer);
     std::reference_wrapper<disruptor::Sequence> cursor_batch_event_processor_2 = processor_2.get_cursor();
     sequencer.add_gating_sequences({cursor_batch_event_processor_2});
@@ -81,7 +81,7 @@ void run_multiple_sequencer() {
     std::reference_wrapper<disruptor::Sequence> cursor_sequencer = sequencer.get_cursor();
 
     constexpr size_t NUMBER_DEPENDENT_SEQUENCES = 1;
-    disruptor::ProcessingSequenceBarrier<WaitStrategyType::ADAPTIVE, NUMBER_DEPENDENT_SEQUENCES> sequence_barrier(
+    disruptor::ProcessingSequenceBarrier<WaitStrategyType::ADAPTIVE, NUMBER_DEPENDENT_SEQUENCES, decltype(sequencer)> sequence_barrier(
         true, {cursor_sequencer}, sequencer);
 
     // Tạo một hàm xử lý sự kiện
@@ -96,7 +96,7 @@ void run_multiple_sequencer() {
     };
 
     // Tạo đối tượng BatchEventProcessor
-    disruptor::BatchEventProcessor<disruptor::Event, ring_buffer_size> processor(
+    disruptor::BatchEventProcessor processor(
         sequence_barrier, eventHandler, ring_buffer);
 
     std::reference_wrapper<disruptor::Sequence> cursor_batch_event_processor = processor.get_cursor();
@@ -149,9 +149,9 @@ void test_1_producer_1_consumer() {
         counter++;
     };
     constexpr size_t NUMBER_DEPENDENT_SEQUENCES = 1;
-    disruptor::ProcessingSequenceBarrier<WaitStrategyType::ADAPTIVE, NUMBER_DEPENDENT_SEQUENCES> sequence_barrier_1(
+    disruptor::ProcessingSequenceBarrier<WaitStrategyType::ADAPTIVE, NUMBER_DEPENDENT_SEQUENCES, decltype(sequencer)> sequence_barrier_1(
         true, {cursor_sequencer}, sequencer);
-    disruptor::BatchEventProcessor<disruptor::Event, ring_buffer_size> processor_1(
+    disruptor::BatchEventProcessor processor_1(
         sequence_barrier_1, eventHandler_1, ring_buffer);
     std::reference_wrapper<disruptor::Sequence> cursor_batch_event_processor_1 = processor_1.get_cursor();
     sequencer.add_gating_sequences({cursor_batch_event_processor_1});
@@ -221,9 +221,9 @@ void test_1_producer_6_consumer() {
     auto eventHandler_1 = [&counter_1](disruptor::Event &event, size_t sequence, bool endOfBatch) {
         counter_1++;
     };
-    disruptor::ProcessingSequenceBarrier<WaitStrategyType::ADAPTIVE, NUMBER_DEPENDENT_SEQUENCES> sequence_barrier_1(
+    disruptor::ProcessingSequenceBarrier<WaitStrategyType::ADAPTIVE, NUMBER_DEPENDENT_SEQUENCES, decltype(sequencer)> sequence_barrier_1(
         true, {cursor_sequencer}, sequencer);
-    disruptor::BatchEventProcessor<disruptor::Event, BUFFER_SIZE> processor_1(
+    disruptor::BatchEventProcessor processor_1(
         sequence_barrier_1, eventHandler_1, ring_buffer);
     std::reference_wrapper<disruptor::Sequence> cursor_batch_event_processor_1 = processor_1.get_cursor();
     std::thread processorThread_1([&processor_1]() { processor_1.run(); });
@@ -234,9 +234,9 @@ void test_1_producer_6_consumer() {
     auto eventHandler_2 = [&counter_2](disruptor::Event &event, size_t sequence, bool endOfBatch) {
         counter_2++;
     };
-    disruptor::ProcessingSequenceBarrier<WaitStrategyType::ADAPTIVE, NUMBER_DEPENDENT_SEQUENCES> sequence_barrier_2(
+    disruptor::ProcessingSequenceBarrier<WaitStrategyType::ADAPTIVE, NUMBER_DEPENDENT_SEQUENCES, decltype(sequencer)> sequence_barrier_2(
         true, {cursor_sequencer}, sequencer);
-    disruptor::BatchEventProcessor<disruptor::Event, BUFFER_SIZE> processor_2(
+    disruptor::BatchEventProcessor processor_2(
         sequence_barrier_2, eventHandler_2, ring_buffer);
     std::reference_wrapper<disruptor::Sequence> cursor_batch_event_processor_2 = processor_2.get_cursor();
     std::thread processorThread_2([&processor_2]() { processor_2.run(); });
@@ -247,9 +247,9 @@ void test_1_producer_6_consumer() {
     auto eventHandler_3 = [&counter_3](disruptor::Event &event, size_t sequence, bool endOfBatch) {
         counter_3++;
     };
-    disruptor::ProcessingSequenceBarrier<WaitStrategyType::ADAPTIVE, NUMBER_DEPENDENT_SEQUENCES> sequence_barrier_3(
+    disruptor::ProcessingSequenceBarrier<WaitStrategyType::ADAPTIVE, NUMBER_DEPENDENT_SEQUENCES, decltype(sequencer)> sequence_barrier_3(
         true, {cursor_sequencer}, sequencer);
-    disruptor::BatchEventProcessor<disruptor::Event, BUFFER_SIZE> processor_3(
+    disruptor::BatchEventProcessor processor_3(
         sequence_barrier_3, eventHandler_3, ring_buffer);
     std::reference_wrapper<disruptor::Sequence> cursor_batch_event_processor_3 = processor_3.get_cursor();
     std::thread processorThread_3([&processor_3]() { processor_3.run(); });
@@ -260,9 +260,9 @@ void test_1_producer_6_consumer() {
     auto eventHandler_4 = [&counter_4](disruptor::Event &event, size_t sequence, bool endOfBatch) {
         counter_4++;
     };
-    disruptor::ProcessingSequenceBarrier<WaitStrategyType::ADAPTIVE, NUMBER_DEPENDENT_SEQUENCES> sequence_barrier_4(
+    disruptor::ProcessingSequenceBarrier<WaitStrategyType::ADAPTIVE, NUMBER_DEPENDENT_SEQUENCES, decltype(sequencer)> sequence_barrier_4(
         true, {cursor_sequencer}, sequencer);
-    disruptor::BatchEventProcessor<disruptor::Event, BUFFER_SIZE> processor_4(
+    disruptor::BatchEventProcessor processor_4(
         sequence_barrier_4, eventHandler_4, ring_buffer);
     std::reference_wrapper<disruptor::Sequence> cursor_batch_event_processor_4 = processor_4.get_cursor();
     std::thread processorThread_4([&processor_4]() { processor_4.run(); });
@@ -273,9 +273,9 @@ void test_1_producer_6_consumer() {
     auto eventHandler_5 = [&counter_5](disruptor::Event &event, size_t sequence, bool endOfBatch) {
         counter_5++;
     };
-    disruptor::ProcessingSequenceBarrier<WaitStrategyType::ADAPTIVE, NUMBER_DEPENDENT_SEQUENCES> sequence_barrier_5(
+    disruptor::ProcessingSequenceBarrier<WaitStrategyType::ADAPTIVE, NUMBER_DEPENDENT_SEQUENCES, decltype(sequencer)> sequence_barrier_5(
         true, {cursor_sequencer}, sequencer);
-    disruptor::BatchEventProcessor<disruptor::Event, BUFFER_SIZE> processor_5(
+    disruptor::BatchEventProcessor processor_5(
         sequence_barrier_5, eventHandler_5, ring_buffer);
     std::reference_wrapper<disruptor::Sequence> cursor_batch_event_processor_5 = processor_5.get_cursor();
     std::thread processorThread_5([&processor_5]() { processor_5.run(); });
@@ -286,9 +286,9 @@ void test_1_producer_6_consumer() {
     auto eventHandler_6 = [&counter_6](disruptor::Event &event, size_t sequence, bool endOfBatch) {
         counter_6++;
     };
-    disruptor::ProcessingSequenceBarrier<WaitStrategyType::ADAPTIVE, NUMBER_DEPENDENT_SEQUENCES> sequence_barrier_6(
+    disruptor::ProcessingSequenceBarrier<WaitStrategyType::ADAPTIVE, NUMBER_DEPENDENT_SEQUENCES, decltype(sequencer)> sequence_barrier_6(
         true, {cursor_sequencer}, sequencer);
-    disruptor::BatchEventProcessor<disruptor::Event, BUFFER_SIZE> processor_6(
+    disruptor::BatchEventProcessor processor_6(
         sequence_barrier_6, eventHandler_6, ring_buffer);
     std::reference_wrapper<disruptor::Sequence> cursor_batch_event_processor_6 = processor_6.get_cursor();
     std::thread processorThread_6([&processor_6]() { processor_6.run(); });
@@ -392,9 +392,9 @@ void test_3_producer_1_consumer() {
     auto eventHandler_1 = [&counter_1](disruptor::Event &event, size_t sequence, bool endOfBatch) {
         counter_1++;
     };
-    disruptor::ProcessingSequenceBarrier<WaitStrategyType::ADAPTIVE, NUMBER_DEPENDENT_SEQUENCES> sequence_barrier_1(
+    disruptor::ProcessingSequenceBarrier<WaitStrategyType::ADAPTIVE, NUMBER_DEPENDENT_SEQUENCES, decltype(sequencer)> sequence_barrier_1(
         true, {cursor_sequencer}, sequencer);
-    disruptor::BatchEventProcessor<disruptor::Event, BUFFER_SIZE> processor_1(
+    disruptor::BatchEventProcessor processor_1(
         sequence_barrier_1, eventHandler_1, ring_buffer);
     std::reference_wrapper<disruptor::Sequence> cursor_batch_event_processor_1 = processor_1.get_cursor();
     std::thread processorThread_1([&processor_1]() { processor_1.run(); });

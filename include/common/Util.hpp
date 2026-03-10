@@ -5,6 +5,11 @@
 #include <chrono>
 #include <condition_variable>
 
+#if defined(__linux__)
+#include <pthread.h>
+#include <sched.h>
+#endif
+
 namespace disruptor {
     class Util {
     public:
@@ -89,6 +94,18 @@ namespace disruptor {
             return buffer_size;
         }
 
+
+        // Pin the calling thread to a specific CPU core
+        static bool pin_thread_to_core(int core_id) noexcept {
+#if defined(__linux__)
+            cpu_set_t cpuset;
+            CPU_ZERO(&cpuset);
+            CPU_SET(core_id, &cpuset);
+            return pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset) == 0;
+#else
+            return false;
+#endif
+        }
 
         [[gnu::hot]] static void adaptive_wait(int &wait_counter) noexcept {
             static constexpr int SPIN_TRIES = 100;

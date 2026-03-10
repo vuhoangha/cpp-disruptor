@@ -2,14 +2,13 @@
 
 #include <mutex>
 #include <unordered_map>
-#include "SequenceBarrier.hpp"
 #include "../sequence/Sequence.hpp"
-#include "../sequencer/Sequencer.hpp"
 #include "../exception/AlertException.hpp"
 #include "../wait_strategy/WaitStrategyType.hpp"
 #include "../wait_strategy/AdaptiveWaitStrategy.hpp"
 #include "../sequence/SequenceGroupForSingleThread.hpp"
 #include "../wait_strategy/YieldingWaitStrategy.hpp"
+#include "../wait_strategy/BusySpinWaitStrategy.hpp"
 
 /**
  * each processor will have a single corresponding sequence barrier. The purpose is to optimize cache
@@ -29,8 +28,13 @@ namespace disruptor {
         using type = YieldingWaitStrategy<NUMBER_DEPENDENT_SEQUENCES>;
     };
 
-    template<WaitStrategyType T, size_t NUMBER_DEPENDENT_SEQUENCES>
-    class ProcessingSequenceBarrier final : public SequenceBarrier {
+    template<size_t NUMBER_DEPENDENT_SEQUENCES>
+    struct WaitStrategySelector<WaitStrategyType::BUSY_SPIN, NUMBER_DEPENDENT_SEQUENCES> {
+        using type = BusySpinWaitStrategy<NUMBER_DEPENDENT_SEQUENCES>;
+    };
+
+    template<WaitStrategyType T, size_t NUMBER_DEPENDENT_SEQUENCES, typename SequencerType>
+    class ProcessingSequenceBarrier final {
         alignas(CACHE_LINE_SIZE) const char padding_1[CACHE_LINE_SIZE] = {};
         using Strategy = typename WaitStrategySelector<T, NUMBER_DEPENDENT_SEQUENCES>::type;
         Strategy wait_strategy;
@@ -44,7 +48,7 @@ namespace disruptor {
         const char padding_4[CACHE_LINE_SIZE - sizeof(bool)] = {};
         const char padding_5[CACHE_LINE_SIZE] = {};
 
-        Sequencer &sequencer;
+        SequencerType &sequencer;
 
         // allow single thread access to the sequence barrier
         bool same_thread() {
@@ -55,7 +59,7 @@ namespace disruptor {
         ProcessingSequenceBarrier(
             const bool direct_publisher_event_listener,
             std::initializer_list<std::reference_wrapper<Sequence> > dependent_sequences,
-            Sequencer &sequencer)
+            SequencerType &sequencer)
             : direct_publisher_event_listener(direct_publisher_event_listener),
               dependent_sequences(dependent_sequences),
               alerted(false),
@@ -63,7 +67,7 @@ namespace disruptor {
         }
 
         // wait for a specific sequence to be ready for processing
-        size_t wait_for(size_t sequence) override {
+        size_t wait_for(size_t sequence) {
             assert(same_thread() && "Accessed by two threads");
             check_alert();
 
@@ -84,19 +88,19 @@ namespace disruptor {
             return available_sequence;
         }
 
-        [[nodiscard]] bool is_alerted() const override {
+        [[nodiscard]] bool is_alerted() const {
             return alerted;
         }
 
-        void alert() override {
+        void alert() {
             alerted = true;
         }
 
-        void clear_alert() override {
+        void clear_alert() {
             alerted = false;
         }
 
-        [[gnu::hot]] void check_alert() const override {
+        [[gnu::hot]] void check_alert() const {
             if (alerted) [[unlikely]]{
                 throw AlertException();
             }
@@ -122,4 +126,9 @@ namespace disruptor {
             }
         };
     };
+
+    // Deduction guide
+    template<WaitStrategyType T, size_t N, typename S>
+    ProcessingSequenceBarrier(bool, std::initializer_list<std::reference_wrapper<Sequence>>, S &)
+        -> ProcessingSequenceBarrier<T, N, S>;
 }

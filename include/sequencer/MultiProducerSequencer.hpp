@@ -1,7 +1,6 @@
 #pragma once
 
 #include "../sequence/SequenceGroupForMultiThread.hpp"
-#include "Sequencer.hpp"
 #include "common/Util.hpp"
 #include "ring_buffer/RingBuffer.hpp"
 
@@ -11,7 +10,7 @@
  */
 namespace disruptor {
     template<typename T, size_t RING_BUFFER_SIZE, size_t NUMBER_GATING_SEQUENCES>
-    class MultiProducerSequencer final : public Sequencer {
+    class MultiProducerSequencer final {
         alignas(CACHE_LINE_SIZE) Sequence cursor{Util::calculate_initial_value_sequence(RING_BUFFER_SIZE)};
 
         alignas(CACHE_LINE_SIZE) const char padding_1[CACHE_LINE_SIZE] = {};
@@ -36,11 +35,11 @@ namespace disruptor {
             }
         }
 
-        void add_gating_sequences(const std::initializer_list<std::reference_wrapper<Sequence> > sequences) override {
+        void add_gating_sequences(const std::initializer_list<std::reference_wrapper<Sequence> > sequences) {
             gating_sequences.set_sequences(sequences);
         }
 
-        [[gnu::hot]] size_t next(const size_t n) override {
+        [[gnu::hot]] size_t next(const size_t n) {
             const size_t buffer_size = ring_buffer.get_buffer_size();
 
             if (n < 1 || n > buffer_size) [[unlikely]] {
@@ -60,11 +59,11 @@ namespace disruptor {
             return next_sequence;
         }
 
-        [[gnu::hot]] void publish(const size_t sequence) override {
+        [[gnu::hot]] void publish(const size_t sequence) {
             set_available(sequence);
         }
 
-        void publish(const size_t low, const size_t high) override {
+        void publish(const size_t low, const size_t high) {
             for (size_t i = low; i <= high; ++i) {
                 set_available(i);
             }
@@ -84,7 +83,7 @@ namespace disruptor {
             return sequence & index_mask;
         }
 
-        [[gnu::hot]] [[nodiscard]] bool is_available(const size_t sequence) const override {
+        [[gnu::hot]] [[nodiscard]] bool is_available(const size_t sequence) const {
             const size_t index = calculate_index(sequence);
             const size_t flag = calculate_availability_flag(sequence);
             return available_buffer[index].get_with_acquire() == flag;
@@ -99,7 +98,7 @@ namespace disruptor {
          * In a multi-producer environment, it's possible that sequence 10 has already been published by producer A, while sequence 9, handled by producer B, is still being processed.
          */
         [[nodiscard]] size_t get_highest_published_sequence(const size_t lower_bound,
-                                                            const size_t available_sequence) const override {
+                                                            const size_t available_sequence) const {
             for (size_t sequence = lower_bound; sequence <= available_sequence; ++sequence) {
                 if (!is_available(sequence)) {
                     return sequence - 1;
