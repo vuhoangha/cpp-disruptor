@@ -1,5 +1,6 @@
 .qodo
 build
+build-*
 .vs
 .idea
-build-release
+.claude
