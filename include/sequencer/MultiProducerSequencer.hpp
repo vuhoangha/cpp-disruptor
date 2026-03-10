@@ -1,8 +1,8 @@
 #pragma once
 
 #include "../sequence/SequenceGroupForMultiThread.hpp"
-#include "common/Util.hpp"
-#include "ring_buffer/RingBuffer.hpp"
+#include "../common/Util.hpp"
+#include "../ring_buffer/RingBuffer.hpp"
 
 /**
  * cursor: the highest sequence number that has been claimed by the producer but not yet published.

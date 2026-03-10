@@ -3,7 +3,7 @@
 #include <stdexcept>
 #include <cstdint>
 #include <chrono>
-#include <condition_variable>
+#include <thread>
 #include <iostream>
 
 #if defined(__linux__)

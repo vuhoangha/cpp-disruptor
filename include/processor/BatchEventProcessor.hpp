@@ -23,17 +23,13 @@ namespace disruptor {
             ring_buffer(ring_buffer_ptr) {
         }
 
-
         [[nodiscard]] Sequence &get_cursor() {
             return sequence;
         }
 
-
-        // stop processor --> sequence barrier --> wait strategy
         void halt() const {
             sequence_barrier.alert();
         }
-
 
         void run() {
             sequence_barrier.clear_alert();
@@ -49,12 +45,13 @@ namespace disruptor {
                 try {
                     const size_t available_sequence = sequence_barrier.wait_for(next_sequence);
 
-                    // if multi_producer_sequencer, sequence was claimed but not publish --> available_sequence = next_sequence - 1
+                    // Multi-producer: sequence claimed but not yet published → available_sequence < next_sequence
                     if (available_sequence < next_sequence) {
-                        // TODO: wait_counter sẽ ko bao giờ về 0 được — cần xem lại logic reset
                         Util::adaptive_wait(wait_counter);
                         continue;
                     }
+
+                    wait_counter = 0;
 
                     while (next_sequence <= available_sequence) {
                         T &event = ring_buffer.get(next_sequence);
@@ -64,7 +61,7 @@ namespace disruptor {
 
                     sequence.set_with_release(available_sequence);
                 } catch (const std::exception &e) {
-                    std::cout << "BatchEventProcessor exception caught: " << e.what() << std::endl;
+                    std::cerr << "BatchEventProcessor exception caught: " << e.what() << std::endl;
                     break;
                 }
             }

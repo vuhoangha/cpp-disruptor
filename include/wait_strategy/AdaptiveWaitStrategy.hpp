@@ -1,6 +1,5 @@
 #pragma once
 
-#include <string>
 #include "../common/Util.hpp"
 #include "../sequence/SequenceGroupForSingleThread.hpp"
 
@@ -23,8 +22,5 @@ namespace disruptor {
             return available_sequence;
         }
 
-        [[nodiscard]] std::string to_string() const noexcept {
-            return "AdaptiveWaitStrategy";
-        }
     };
 }

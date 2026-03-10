@@ -1,7 +1,7 @@
 #pragma once
 
-#include <mutex>
-#include <unordered_map>
+#include <thread>
+#include <cassert>
 #include "../sequence/Sequence.hpp"
 #include "../exception/AlertException.hpp"
 #include "../wait_strategy/WaitStrategyType.hpp"
@@ -50,10 +50,19 @@ namespace disruptor {
 
         SequencerType &sequencer;
 
-        // allow single thread access to the sequence barrier
+#ifndef NDEBUG
+        std::thread::id owner_thread_id_{};
+        bool owner_set_{false};
+
         bool same_thread() {
-            return SequenceBarrierThreadAssertion::is_same_thread(this);
+            if (!owner_set_) {
+                owner_thread_id_ = std::this_thread::get_id();
+                owner_set_ = true;
+                return true;
+            }
+            return owner_thread_id_ == std::this_thread::get_id();
         }
+#endif
 
     public:
         ProcessingSequenceBarrier(
@@ -106,25 +115,6 @@ namespace disruptor {
             }
         }
 
-        /**
-         * Only used when assertions are enabled.
-         */
-        class SequenceBarrierThreadAssertion {
-            static inline std::unordered_map<ProcessingSequenceBarrier *, std::thread::id> SEQUENCE_BARRIERS;
-            static inline std::mutex producers_mutex;
-
-        public:
-            static bool is_same_thread(ProcessingSequenceBarrier *sequence_barrier) {
-                std::lock_guard lock(producers_mutex);
-
-                const std::thread::id current_thread = std::this_thread::get_id();
-                if (!SEQUENCE_BARRIERS.contains(sequence_barrier)) {
-                    SEQUENCE_BARRIERS[sequence_barrier] = current_thread;
-                }
-
-                return SEQUENCE_BARRIERS[sequence_barrier] == current_thread;
-            }
-        };
     };
 
     // Deduction guide

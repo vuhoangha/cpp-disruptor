@@ -1,6 +1,5 @@
 #pragma once
 
-#include <string>
 #include <thread>
 #include "../sequence/SequenceGroupForSingleThread.hpp"
 
@@ -34,8 +33,5 @@ namespace disruptor {
             return available_sequence;
         }
 
-        [[nodiscard]] std::string to_string() const noexcept {
-            return "YieldingWaitStrategy";
-        }
     };
 }

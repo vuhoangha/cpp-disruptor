@@ -2,8 +2,8 @@
 
 #include "../common/Common.hpp"
 #include "../common/Util.hpp"
-#include <unordered_map>
 #include <cassert>
+#include <thread>
 
 #include "../sequence/SequenceGroupForSingleThread.hpp"
 
@@ -23,9 +23,19 @@ namespace disruptor {
         const RingBuffer<T, RING_BUFFER_SIZE> &ring_buffer;
         SequenceGroupForSingleThread<NUMBER_GATING_SEQUENCES> gating_sequences;
 
+#ifndef NDEBUG
+        std::thread::id owner_thread_id_{};
+        bool owner_set_{false};
+
         bool same_thread() {
-            return ProducerThreadAssertion::is_same_thread_producing_to(this);
+            if (!owner_set_) {
+                owner_thread_id_ = std::this_thread::get_id();
+                owner_set_ = true;
+                return true;
+            }
+            return owner_thread_id_ == std::this_thread::get_id();
         }
+#endif
 
     public:
         explicit
@@ -84,24 +94,5 @@ namespace disruptor {
             return cursor;
         }
 
-        /**
-         * Only used when assertions are enabled.
-         */
-        class ProducerThreadAssertion {
-            static inline std::unordered_map<SingleProducerSequencer *, std::thread::id> PRODUCERS;
-            static inline std::mutex producers_mutex;
-
-        public:
-            static bool is_same_thread_producing_to(SingleProducerSequencer *single_producer_sequencer) {
-                std::lock_guard lock(producers_mutex);
-
-                const std::thread::id currentThread = std::this_thread::get_id();
-                if (!PRODUCERS.contains(single_producer_sequencer)) {
-                    PRODUCERS[single_producer_sequencer] = currentThread;
-                }
-
-                return PRODUCERS[single_producer_sequencer] == currentThread;
-            }
-        };
     };
 }

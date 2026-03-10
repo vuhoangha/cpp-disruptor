@@ -1,9 +1,8 @@
 #pragma once
 
-#include <string>
 #include <cassert>
 #include <array>
-#include <format>
+#include <limits>
 
 #include "Sequence.hpp"
 
@@ -26,7 +25,7 @@ namespace disruptor {
         }
 
         void set_sequences(const std::initializer_list<std::reference_wrapper<Sequence> > dependent_sequences) {
-            assert(dependent_sequences.size() == NUMBER_DEPENDENT_SEQUENCES && std::format("Require {} sequences", NUMBER_DEPENDENT_SEQUENCES).c_str());
+            assert(dependent_sequences.size() == NUMBER_DEPENDENT_SEQUENCES);
             std::size_t i = 0;
             for (auto &ref: dependent_sequences) {
                 sequences[i++] = &ref.get();
@@ -34,7 +33,7 @@ namespace disruptor {
         }
 
         [[nodiscard]] size_t get() {
-            size_t minimum_sequence = INT64_MAX;
+            size_t minimum_sequence = std::numeric_limits<size_t>::max();
             for (const auto &sequence: sequences) {
                 const size_t value = sequence->get_with_acquire();
                 minimum_sequence = std::min(minimum_sequence, value);

@@ -1,9 +1,8 @@
 #pragma once
 
-#include <string>
 #include <cassert>
 #include <array>
-#include <format>
+#include <limits>
 
 #include "Sequence.hpp"
 
@@ -20,7 +19,7 @@ namespace disruptor {
         const char padding_4[CACHE_LINE_SIZE * 2] = {};
 
         void calculate_cache() {
-            size_t minimum_sequence = INT64_MAX;
+            size_t minimum_sequence = std::numeric_limits<size_t>::max();
             size_t minimum_index = 0;
             for (size_t k = 0; k < sequences.size(); k++) {
                 const size_t value = sequences[k]->get_with_acquire();
@@ -46,9 +45,7 @@ namespace disruptor {
         }
 
         void set_sequences(const std::initializer_list<std::reference_wrapper<Sequence> > dependent_sequences) {
-            assert(
-                dependent_sequences.size() == NUMBER_DEPENDENT_SEQUENCES && std::format("Require {} sequences",
-                    NUMBER_DEPENDENT_SEQUENCES).c_str());
+            assert(dependent_sequences.size() == NUMBER_DEPENDENT_SEQUENCES);
             std::size_t i = 0;
             for (auto &ref: dependent_sequences) {
                 sequences[i++] = &ref.get();
@@ -69,7 +66,7 @@ namespace disruptor {
             }
 
             size_t index = 0;
-            size_t minimum_sequence = INT64_MAX;
+            size_t minimum_sequence = std::numeric_limits<size_t>::max();
             for (size_t i = 0; i < sequences.size(); i++) {
                 const size_t value = sequences[i]->get_with_acquire();
 

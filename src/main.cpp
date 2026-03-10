@@ -20,7 +20,6 @@ void run_single_sequencer() {
     std::reference_wrapper<disruptor::Sequence> cursor_sequencer = sequencer.get_cursor();
 
 
-    // Tạo đối tượng BatchEventProcessor
     auto eventHandler_1 = [](disruptor::Event &event, size_t sequence, bool endOfBatch) {
         std::cout << std::format("{:%F %T}", std::chrono::system_clock::now()) << "Process A - event on sequence: " <<
                 sequence << " - value: " << event.get_value();
@@ -40,7 +39,6 @@ void run_single_sequencer() {
     std::thread processorThread_1([&processor_1]() { processor_1.run(); });
 
 
-    // Tạo đối tượng BatchEventProcessor
     auto eventHandler_2 = [](disruptor::Event &event, size_t sequence, bool endOfBatch) {
         std::cout << std::format("{:%F %T}", std::chrono::system_clock::now()) << "Process B - event on sequence: " <<
                 sequence << " - value: " << event.get_value();
@@ -84,7 +82,6 @@ void run_multiple_sequencer() {
     disruptor::ProcessingSequenceBarrier<WaitStrategyType::ADAPTIVE, NUMBER_DEPENDENT_SEQUENCES, decltype(sequencer)> sequence_barrier(
         true, {cursor_sequencer}, sequencer);
 
-    // Tạo một hàm xử lý sự kiện
     auto eventHandler = [](disruptor::Event &event, const size_t sequence, const bool endOfBatch) {
         std::cout << "Process event on sequence: " << sequence << " - value: " << event.get_value();
         if (endOfBatch) {
@@ -95,14 +92,12 @@ void run_multiple_sequencer() {
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
     };
 
-    // Tạo đối tượng BatchEventProcessor
     disruptor::BatchEventProcessor processor(
         sequence_barrier, eventHandler, ring_buffer);
 
     std::reference_wrapper<disruptor::Sequence> cursor_batch_event_processor = processor.get_cursor();
     sequencer.add_gating_sequences({cursor_batch_event_processor});
 
-    // Có thể chạy processor trong một thread riêng
     std::thread consumerThread([&processor]() { processor.run(); });
 
     std::this_thread::sleep_for(std::chrono::seconds(1));
@@ -143,7 +138,7 @@ void test_1_producer_1_consumer() {
     std::reference_wrapper<disruptor::Sequence> cursor_sequencer = sequencer.get_cursor();
 
 
-    // Tạo đối tượng BatchEventProcessor
+    // BatchEventProcessor
     size_t counter = 0;
     auto eventHandler_1 = [&counter](disruptor::Event &event, size_t sequence, bool endOfBatch) {
         counter++;
@@ -157,13 +152,13 @@ void test_1_producer_1_consumer() {
     sequencer.add_gating_sequences({cursor_batch_event_processor_1});
     std::thread processorThread_1([&processor_1]() { processor_1.run(); });
 
-    // Số lượng sự kiện sẽ được gửi
+    // Number of events to send
     constexpr size_t NUM_EVENTS = 10'000'000'004;
 
-    // Đợi consumer khởi động
+    // Wait for consumer to start
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
-    // Đo thời gian và hiệu suất của producer
+    // Measure producer throughput
     std::cout << "Start send " << NUM_EVENTS << " event..." << std::endl;
 
     auto start_time = std::chrono::high_resolution_clock::now();
@@ -181,7 +176,7 @@ void test_1_producer_1_consumer() {
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
 
 
-    // Đợi consumer xử lý hết
+    // Wait for consumer to finish processing
     while (counter < NUM_EVENTS) {
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
@@ -193,8 +188,6 @@ void test_1_producer_1_consumer() {
     double events_per_second = NUM_EVENTS / seconds;
 
 
-    // std::cout << "Hoàn thành!" << std::endl;
-    // std::cout << "Số lượng sự kiện: " << NUM_EVENTS << std::endl;
     std::cout << "Time: " << std::fixed << std::setprecision(3) << seconds << " s" << std::endl;
     std::cout << "Rate: " << std::fixed << std::setprecision(0) << events_per_second << " event/s" << std::endl;
 }
@@ -216,7 +209,7 @@ void test_1_producer_6_consumer() {
     std::reference_wrapper<disruptor::Sequence> cursor_sequencer = sequencer.get_cursor();
 
 
-    // Tạo đối tượng BatchEventProcessor 1
+    // BatchEventProcessor 1
     size_t counter_1 = 0;
     auto eventHandler_1 = [&counter_1](disruptor::Event &event, size_t sequence, bool endOfBatch) {
         counter_1++;
@@ -229,7 +222,7 @@ void test_1_producer_6_consumer() {
     std::thread processorThread_1([&processor_1]() { processor_1.run(); });
 
 
-    // Tạo đối tượng BatchEventProcessor 2
+    // BatchEventProcessor 2
     size_t counter_2 = 0;
     auto eventHandler_2 = [&counter_2](disruptor::Event &event, size_t sequence, bool endOfBatch) {
         counter_2++;
@@ -242,7 +235,7 @@ void test_1_producer_6_consumer() {
     std::thread processorThread_2([&processor_2]() { processor_2.run(); });
 
 
-    // Tạo đối tượng BatchEventProcessor 3
+    // BatchEventProcessor 3
     size_t counter_3 = 0;
     auto eventHandler_3 = [&counter_3](disruptor::Event &event, size_t sequence, bool endOfBatch) {
         counter_3++;
@@ -255,7 +248,7 @@ void test_1_producer_6_consumer() {
     std::thread processorThread_3([&processor_3]() { processor_3.run(); });
 
 
-    // Tạo đối tượng BatchEventProcessor 4
+    // BatchEventProcessor 4
     size_t counter_4 = 0;
     auto eventHandler_4 = [&counter_4](disruptor::Event &event, size_t sequence, bool endOfBatch) {
         counter_4++;
@@ -268,7 +261,7 @@ void test_1_producer_6_consumer() {
     std::thread processorThread_4([&processor_4]() { processor_4.run(); });
 
 
-    // Tạo đối tượng BatchEventProcessor 5
+    // BatchEventProcessor 5
     size_t counter_5 = 0;
     auto eventHandler_5 = [&counter_5](disruptor::Event &event, size_t sequence, bool endOfBatch) {
         counter_5++;
@@ -281,7 +274,7 @@ void test_1_producer_6_consumer() {
     std::thread processorThread_5([&processor_5]() { processor_5.run(); });
 
 
-    // Tạo đối tượng BatchEventProcessor 6
+    // BatchEventProcessor 6
     size_t counter_6 = 0;
     auto eventHandler_6 = [&counter_6](disruptor::Event &event, size_t sequence, bool endOfBatch) {
         counter_6++;
@@ -303,7 +296,7 @@ void test_1_producer_6_consumer() {
         cursor_batch_event_processor_6
     });
 
-    // Đợi consumer khởi động
+    // Wait for consumer to start
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
     auto start_time = std::chrono::high_resolution_clock::now();
@@ -387,7 +380,7 @@ void test_3_producer_1_consumer() {
     std::reference_wrapper<disruptor::Sequence> cursor_sequencer = sequencer.get_cursor();
 
 
-    // Tạo đối tượng BatchEventProcessor 1
+    // BatchEventProcessor 1
     size_t counter_1 = 0;
     auto eventHandler_1 = [&counter_1](disruptor::Event &event, size_t sequence, bool endOfBatch) {
         counter_1++;
@@ -404,7 +397,7 @@ void test_3_producer_1_consumer() {
         cursor_batch_event_processor_1
     });
 
-    // Đợi consumer khởi động
+    // Wait for consumer to start
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
     auto start_time = std::chrono::high_resolution_clock::now();
@@ -448,100 +441,11 @@ void test_3_producer_1_consumer() {
 }
 
 
-void test_atomic() {
-    constexpr uint64_t NUM_ITERATIONS = 500'000'000; // 1 tỷ
-    std::atomic<uint64_t> counter{0};
-
-    auto start = std::chrono::high_resolution_clock::now();
-
-    for (uint64_t i = 0; i < NUM_ITERATIONS; ++i) {
-        // counter.fetch_add(1, std::memory_order_relaxed);
-        // counter.fetch_add(1, std::memory_order_release);
-        // counter.store(i, std::memory_order_release);
-        // counter.load(std::memory_order_relaxed);
-        // uint64_t aa = counter.load(std::memory_order_acquire);
-
-        // std::atomic_thread_fence(std::memory_order_release);
-        // size_t result;
-        // __asm__ __volatile__ (
-        //     "lock xaddq %0, %1"
-        //     : "=r" (result), "+m" (value)
-        //     : "0" (1)
-        //     : "memory"
-        // );
-        // int a = 1;
-
-        // size_t value1 = value;
-        // std::atomic_thread_fence(std::memory_order_acquire);
-
-        // std::atomic_thread_fence(std::memory_order_release);
-        // value = i;
-    }
-
-    auto end = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double> elapsed = end - start;
-    double seconds = elapsed.count();
-
-    double rate = NUM_ITERATIONS / seconds;
-
-    // Thiết lập locale để in số có dấu phẩy phân tách
-    std::cout.imbue(std::locale("en_US.UTF-8"));
-    std::cout << "Processed: " << NUM_ITERATIONS << " fetch_add calls in "
-            << seconds << " seconds\n";
-    std::cout << "Rate: " << std::fixed << std::setprecision(0)
-            << rate << " ops/sec" << std::endl;
-}
-
-
-void test_custom_atomic() {
-    constexpr uint64_t NUM_ITERATIONS = 500'000'000; // 1 tỷ
-    volatile int counter = 0;
-
-    auto start = std::chrono::high_resolution_clock::now();
-
-    for (uint64_t i = 0; i < NUM_ITERATIONS; ++i) {
-        // counter.fetch_add(1, std::memory_order_relaxed);
-        // counter.fetch_add(1, std::memory_order_release);
-        // counter.store(i, std::memory_order_release);
-        // counter.load(std::memory_order_relaxed);
-        // __atomic_fetch_add(&counter, 1, __ATOMIC_RELAXED);
-        // __sync_fetch_and_add(&counter, 1);
-
-        int result;
-        asm volatile (
-            "movl $1, %0\n\t"
-            "lock xaddl %0, %1"
-            : "=&r" (result), "+m" (counter)
-            :
-            : "memory"
-        );
-    }
-
-    auto end = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double> elapsed = end - start;
-    double seconds = elapsed.count();
-
-    double rate = NUM_ITERATIONS / seconds;
-
-    // Thiết lập locale để in số có dấu phẩy phân tách
-    std::cout.imbue(std::locale("en_US.UTF-8"));
-    std::cout << "Processed: " << NUM_ITERATIONS << " fetch_add calls in "
-            << seconds << " seconds\n";
-    std::cout << "Rate: " << std::fixed << std::setprecision(0)
-            << rate << " ops/sec" << std::endl;
-}
-
-
 int main() {
-    // kiểm tra hệ thống có đủ điều kiện ko
+    // Verify system requirements
     disruptor::Util::require_for_system_run_stable();
 
-
-    // run_single_sequencer();
-    // test_3_producer_1_consumer();
     test_1_producer_6_consumer();
-    // test_atomic();
-    // test_custom_atomic();
 
     return 0;
 }
