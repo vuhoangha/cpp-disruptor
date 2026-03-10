@@ -7,7 +7,6 @@
 #include <atomic>
 #include "BatchEventProcessor.hpp"
 #include "Sequence.hpp"
-#include "SequenceBarrier.hpp"
 #include "RingBuffer.hpp"
 #include "AlertException.hpp"
 #include "TestEvent.hpp"
@@ -15,14 +14,14 @@
 using namespace testing;
 using namespace disruptor;
 
-// Mock cho SequenceBarrier
-class MockSequenceBarrier final : public SequenceBarrier {
+// Mock barrier — duck-typed template mock (no virtual base class needed)
+class MockSequenceBarrier final {
 public:
-    MOCK_METHOD(size_t, wait_for, (size_t sequence), (override));
-    MOCK_METHOD(bool, is_alerted, (), (const, override));
-    MOCK_METHOD(void, alert, (), (override));
-    MOCK_METHOD(void, clear_alert, (), (override));
-    MOCK_METHOD(void, check_alert, (), (const, override));
+    MOCK_METHOD(size_t, wait_for, (size_t sequence));
+    MOCK_METHOD(bool, is_alerted, (), (const));
+    MOCK_METHOD(void, alert, ());
+    MOCK_METHOD(void, clear_alert, ());
+    MOCK_METHOD(void, check_alert, (), (const));
 };
 
 class BatchEventProcessorTest : public Test {

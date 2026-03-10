@@ -3,7 +3,6 @@
 #include <memory>
 #include <thread>
 #include "ProcessingSequenceBarrier.hpp"
-#include "Sequencer.hpp"
 #include "Sequence.hpp"
 #include "WaitStrategyType.hpp"
 #include <future>
@@ -12,15 +11,15 @@
 using namespace testing;
 using namespace disruptor;
 
-// Mock Sequencer cho việc kiểm thử
-class MockSequencer final : public Sequencer {
+// Mock sequencer — duck-typed template mock (no virtual base class needed)
+class MockSequencer final {
 public:
-    MOCK_METHOD(size_t, next, (size_t n), (override));
-    MOCK_METHOD(void, publish, (size_t sequence), (override));
-    MOCK_METHOD(void, publish, (size_t lo, size_t hi), (override));
-    MOCK_METHOD(bool, is_available, (size_t sequence), (const, override));
-    MOCK_METHOD(size_t, get_highest_published_sequence, (size_t lo_bound, size_t hi_bound), (const, override));
-    MOCK_METHOD(void, add_gating_sequences, (std::initializer_list<std::reference_wrapper<disruptor::Sequence>>), (override));
+    MOCK_METHOD(size_t, next, (size_t n));
+    MOCK_METHOD(void, publish, (size_t sequence));
+    MOCK_METHOD(void, publish, (size_t lo, size_t hi));
+    MOCK_METHOD(bool, is_available, (size_t sequence), (const));
+    MOCK_METHOD(size_t, get_highest_published_sequence, (size_t lo_bound, size_t hi_bound), (const));
+    MOCK_METHOD(void, add_gating_sequences, (std::initializer_list<std::reference_wrapper<disruptor::Sequence>>));
 };
 
 class ProcessingSequenceBarrierTest : public Test {
