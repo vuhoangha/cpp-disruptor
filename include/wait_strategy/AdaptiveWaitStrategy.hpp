@@ -1,7 +1,7 @@
 #pragma once
 
 #include <string>
-#include "Util.hpp"
+#include "../common/Util.hpp"
 #include "../sequence/SequenceGroupForSingleThread.hpp"
 
 namespace disruptor {

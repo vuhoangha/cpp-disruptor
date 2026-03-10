@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <chrono>
 #include <condition_variable>
+#include <iostream>
 
 #if defined(__linux__)
 #include <pthread.h>

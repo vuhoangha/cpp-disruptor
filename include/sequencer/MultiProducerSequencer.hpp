@@ -13,11 +13,14 @@ namespace disruptor {
     class MultiProducerSequencer final {
         alignas(CACHE_LINE_SIZE) Sequence cursor{Util::calculate_initial_value_sequence(RING_BUFFER_SIZE)};
 
-        alignas(CACHE_LINE_SIZE) const char padding_1[CACHE_LINE_SIZE] = {};
-        const size_t index_mask;
+        // Cached minimum gating sequence — shared hint across producer threads.
+        // Uses relaxed atomic: stale reads only cause an extra slow-path check, never incorrectness.
+        alignas(CACHE_LINE_SIZE) std::atomic<size_t> cached_gating_sequence{0};
+        const char padding_0[CACHE_LINE_SIZE - sizeof(std::atomic<size_t>)] = {};
+
+        alignas(CACHE_LINE_SIZE) const size_t index_mask;
         const size_t index_shift;
-        // ring_buffer = 16 --> indexShift = 4 (log2(16) = 4). Sequence = 89 --> 89 >> 4 = 5. To reach this sequence, the ring buffer must complete 5 full rotations.
-        const char padding_2[CACHE_LINE_SIZE - sizeof(std::atomic<size_t>) * 2] = {};
+        const char padding_2[CACHE_LINE_SIZE - sizeof(size_t) * 2] = {};
         const char padding_3[CACHE_LINE_SIZE] = {};
 
         std::array<Sequence, RING_BUFFER_SIZE> available_buffer;
@@ -50,10 +53,14 @@ namespace disruptor {
             const size_t next_sequence = current_sequence + n;
             const size_t wrap_point = next_sequence - buffer_size;
 
-            int wait_counter = 0;
-
-            while (gating_sequences.get() < wrap_point) {
-                Util::adaptive_wait(wait_counter);
+            // Fast path: check cached gating sequence first (avoids cross-thread atomic load)
+            if (cached_gating_sequence.load(std::memory_order_relaxed) < wrap_point) [[unlikely]] {
+                int wait_counter = 0;
+                size_t min_sequence;
+                while (wrap_point > (min_sequence = gating_sequences.get())) {
+                    Util::adaptive_wait(wait_counter);
+                }
+                cached_gating_sequence.store(min_sequence, std::memory_order_relaxed);
             }
 
             return next_sequence;
@@ -64,9 +71,14 @@ namespace disruptor {
         }
 
         void publish(const size_t low, const size_t high) {
+            // Batch publish: plain stores for all slots, single release fence at end.
+            // Consumer uses acquire loads, so release-acquire pairing guarantees visibility.
             for (size_t i = low; i <= high; ++i) {
-                set_available(i);
+                const size_t index = calculate_index(i);
+                const size_t flag = calculate_availability_flag(i);
+                available_buffer[index].set(flag); // plain store, no fence
             }
+            std::atomic_thread_fence(std::memory_order_release);
         }
 
         void set_available(const size_t sequence) {
