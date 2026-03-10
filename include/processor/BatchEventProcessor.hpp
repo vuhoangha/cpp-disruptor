@@ -1,5 +1,4 @@
 #pragma once
-#include <iostream>
 
 #include "../sequence/Sequence.hpp"
 #include "../ring_buffer/RingBuffer.hpp"
@@ -42,28 +41,27 @@ namespace disruptor {
             int wait_counter = 0;
 
             while (true) {
-                try {
-                    const size_t available_sequence = sequence_barrier.wait_for(next_sequence);
+                const size_t available_sequence = sequence_barrier.wait_for(next_sequence);
 
-                    // Multi-producer: sequence claimed but not yet published → available_sequence < next_sequence
-                    if (available_sequence < next_sequence) [[unlikely]] {
-                        Util::adaptive_wait(wait_counter);
-                        continue;
-                    }
+                if (available_sequence == SEQUENCE_ALERT) [[unlikely]] break;
 
-                    wait_counter = 0;
-
-                    while (next_sequence <= available_sequence) {
-                        T &event = ring_buffer.get(next_sequence);
-                        event_handler(event, next_sequence, next_sequence == available_sequence);
-                        next_sequence++;
-                    }
-
-                    sequence.set_with_release(available_sequence);
-                } catch (const std::exception &e) {
-                    std::cerr << "BatchEventProcessor exception caught: " << e.what() << std::endl;
-                    break;
+                // Multi-producer: sequence claimed but not yet published
+                if (available_sequence < next_sequence) [[unlikely]] {
+                    Util::adaptive_wait(wait_counter);
+                    continue;
                 }
+
+                wait_counter = 0;
+
+                while (next_sequence <= available_sequence) {
+                    // Prefetch next ring buffer entry while processing current one
+                    __builtin_prefetch(&ring_buffer.get(next_sequence + 1), 0, 3);
+                    T &event = ring_buffer.get(next_sequence);
+                    event_handler(event, next_sequence, next_sequence == available_sequence);
+                    next_sequence++;
+                }
+
+                sequence.set_with_release(available_sequence);
             }
         }
     };

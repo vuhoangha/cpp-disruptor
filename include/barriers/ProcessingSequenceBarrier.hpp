@@ -75,28 +75,22 @@ namespace disruptor {
               sequencer(sequencer) {
         }
 
-        [[gnu::hot]] size_t wait_for(size_t sequence) {
+        [[gnu::hot]] size_t wait_for(size_t sequence) noexcept {
             assert(same_thread() && "Accessed by two threads");
-            check_alert();
+            if (alerted) [[unlikely]] return SEQUENCE_ALERT;
 
             const size_t available_sequence = wait_strategy.wait_for(sequence, dependent_sequences, *this);
-            if (available_sequence < sequence) [[unlikely]] {
-                return available_sequence;
-            }
+            if (available_sequence == SEQUENCE_ALERT) [[unlikely]] return SEQUENCE_ALERT;
+            if (available_sequence < sequence) [[unlikely]] return available_sequence;
 
             if (direct_publisher_event_listener) {
-                // listen directly from the publisher
-                // single producer: directly returns "available_sequence"
-                // multi producer: returns the highest contiguous sequence that has been published
                 return sequencer.get_highest_published_sequence(sequence, available_sequence);
             }
 
-            // wait after other processors
-            // this sequence is guaranteed to have been published
             return available_sequence;
         }
 
-        [[nodiscard]] bool is_alerted() const {
+        [[nodiscard]] bool is_alerted() const noexcept {
             return alerted;
         }
 

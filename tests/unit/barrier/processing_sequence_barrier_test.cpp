@@ -121,11 +121,10 @@ TEST_F(ProcessingSequenceBarrierTest, AlertDuringWait) {
         barrier.alert();
     });
 
-    // Gọi wait_for từ thread chính, yêu cầu sequence cao hơn (10)
-    // Phải ném AlertException khi alert được đặt
-    EXPECT_THROW(barrier.wait_for(10), AlertException);
+    // wait_for returns SEQUENCE_ALERT when alerted
+    const size_t result = barrier.wait_for(10);
+    EXPECT_EQ(result, SEQUENCE_ALERT);
 
-    // Đảm bảo thread alert đã hoàn thành
     alert_thread.join();
 }
 

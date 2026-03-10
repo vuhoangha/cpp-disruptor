@@ -17,12 +17,12 @@ namespace disruptor {
         template<typename Barrier>
         [[gnu::hot]] [[nodiscard]] size_t wait_for(const size_t sequence,
                                       SequenceGroupForSingleThread<NUMBER_DEPENDENT_SEQUENCES> &dependent_sequences,
-                                      const Barrier &barrier) {
+                                      const Barrier &barrier) noexcept {
             size_t available_sequence;
             int counter = SPIN_TRIES;
 
             while ((available_sequence = dependent_sequences.get()) < sequence) {
-                barrier.check_alert();
+                if (barrier.is_alerted()) [[unlikely]] return SEQUENCE_ALERT;
                 if (counter > 0) {
                     --counter;
                 } else {

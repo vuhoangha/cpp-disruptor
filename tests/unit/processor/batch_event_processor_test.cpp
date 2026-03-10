@@ -8,7 +8,7 @@
 #include "BatchEventProcessor.hpp"
 #include "Sequence.hpp"
 #include "RingBuffer.hpp"
-#include "AlertException.hpp"
+#include "Common.hpp"
 #include "TestEvent.hpp"
 
 using namespace testing;
@@ -83,7 +83,7 @@ TEST_F(BatchEventProcessorTest, ProcessSingleBatch) {
     // Mong đợi sequence barrier sẽ được gọi với sequence BUFFER_SIZE+5
     // Nhưng sẽ throw AlertException để dừng vòng lặp
     EXPECT_CALL(*sequence_barrier, wait_for(BUFFER_SIZE + 5))
-            .WillOnce(Throw(AlertException()));
+            .WillOnce(Return(SEQUENCE_ALERT));
 
     // Mong đợi sequence barrier sẽ được clear alert ban đầu
     EXPECT_CALL(*sequence_barrier, clear_alert())
@@ -137,7 +137,7 @@ TEST_F(BatchEventProcessorTest, ProcessMultipleBatches) {
             .WillOnce(Return(BUFFER_SIZE + 6)); // Batch 2: sequences BUFFER_SIZE+4 đến BUFFER_SIZE+6
 
     EXPECT_CALL(*sequence_barrier, wait_for(BUFFER_SIZE + 7))
-            .WillOnce(Throw(AlertException())); // Dừng vòng lặp
+            .WillOnce(Return(SEQUENCE_ALERT)); // Dừng vòng lặp
 
     EXPECT_CALL(*sequence_barrier, clear_alert())
             .Times(1);
@@ -194,7 +194,7 @@ TEST_F(BatchEventProcessorTest, ProcessNoEvents) {
     EXPECT_CALL(*sequence_barrier, wait_for(BUFFER_SIZE + 1))
             .Times(2)
             .WillOnce(Return(BUFFER_SIZE))
-            .WillOnce(Throw(AlertException()));
+            .WillOnce(Return(SEQUENCE_ALERT));
 
     EXPECT_CALL(*sequence_barrier, clear_alert())
             .Times(1);
@@ -236,7 +236,7 @@ TEST_F(BatchEventProcessorTest, CustomEventHandler) {
             .WillOnce(Return(BUFFER_SIZE + 5)); // Sequences BUFFER_SIZE+1 đến BUFFER_SIZE+5
 
     EXPECT_CALL(*sequence_barrier, wait_for(BUFFER_SIZE + 6))
-            .WillOnce(Throw(AlertException())); // Dừng vòng lặp
+            .WillOnce(Return(SEQUENCE_ALERT)); // Dừng vòng lặp
 
     EXPECT_CALL(*sequence_barrier, clear_alert())
             .Times(1);
@@ -289,17 +289,17 @@ TEST_F(BatchEventProcessorTest, ExceptionInEventHandler) {
     EXPECT_CALL(*sequence_barrier, clear_alert())
             .Times(1);
 
-    // Chạy processor
-    processor.run();
+    // Run processor — exception from handler propagates up
+    EXPECT_THROW(processor.run(), std::runtime_error);
 
-    // Kiểm tra kết quả
+    // Verify results
     EXPECT_TRUE(exception_thrown);
-    ASSERT_EQ(processed_values.size(), 2); // Chỉ 2 sự kiện đầu tiên được xử lý
+    ASSERT_EQ(processed_values.size(), 2); // Only first 2 events processed
     EXPECT_EQ(processed_values[0], 10);
     EXPECT_EQ(processed_values[1], 20);
 
-    // Kiểm tra cursor (chỉ được cập nhật đến điểm cuối của batch trước)
-    EXPECT_EQ(processor.get_cursor().get_with_acquire(), BUFFER_SIZE); // Không có batch nào hoàn thành
+    // Cursor not updated (no batch completed before exception)
+    EXPECT_EQ(processor.get_cursor().get_with_acquire(), BUFFER_SIZE);
 }
 
 // Test với batch size lớn hơn ring buffer size
@@ -312,7 +312,7 @@ TEST_F(BatchEventProcessorTest, BatchSizeLargerThanRingBuffer) {
 
     // Mong đợi sequence barrier sẽ được gọi lại
     EXPECT_CALL(*sequence_barrier, wait_for(BUFFER_SIZE + 21))
-            .WillOnce(Throw(AlertException())); // Dừng vòng lặp
+            .WillOnce(Return(SEQUENCE_ALERT)); // Dừng vòng lặp
 
     EXPECT_CALL(*sequence_barrier, clear_alert())
             .Times(1);
