@@ -11,7 +11,7 @@ namespace disruptor {
      */
     template<size_t NUMBER_DEPENDENT_SEQUENCES>
     class YieldingWaitStrategy final {
-        static constexpr int SPIN_TRIES = 100;
+        static constexpr int SPIN_TRIES = 200;
 
     public:
         template<typename Barrier>
@@ -25,6 +25,11 @@ namespace disruptor {
                 if (barrier.is_alerted()) [[unlikely]] return SEQUENCE_ALERT;
                 if (counter > 0) {
                     --counter;
+#if defined(__x86_64__) || defined(__i386__)
+                    __builtin_ia32_pause();
+#elif defined(__aarch64__) || defined(__arm__)
+                    __asm__ __volatile__("yield");
+#endif
                 } else {
                     std::this_thread::yield();
                 }

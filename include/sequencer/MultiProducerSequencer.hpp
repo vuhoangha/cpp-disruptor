@@ -23,7 +23,11 @@ namespace disruptor {
         const char padding_2[CACHE_LINE_SIZE - sizeof(size_t) * 2] = {};
         const char padding_3[CACHE_LINE_SIZE] = {};
 
-        std::array<Sequence, RING_BUFFER_SIZE> available_buffer;
+        // Lightweight per-slot availability flags. No padding needed between entries:
+        // producers write to disjoint slots, consumer reads sequentially.
+        // Uses atomic<size_t> (8 bytes) instead of full Sequence objects (192 bytes per slot).
+        // For BUF=64K: 512KB vs 12.5MB — fits in L2/L3 cache.
+        alignas(CACHE_LINE_SIZE) std::array<std::atomic<size_t>, RING_BUFFER_SIZE> available_buffer;
         const char padding_4[CACHE_LINE_SIZE * 2] = {};
 
         const RingBuffer<T, RING_BUFFER_SIZE> &ring_buffer;
@@ -33,9 +37,10 @@ namespace disruptor {
         explicit MultiProducerSequencer(const RingBuffer<T, RING_BUFFER_SIZE> &ring_buffer_ptr)
             : index_mask(ring_buffer_ptr.get_buffer_size() - 1),
               index_shift(Util::log_2(ring_buffer_ptr.get_buffer_size())), ring_buffer(ring_buffer_ptr) {
-            for (auto &seq: available_buffer) {
-                seq.set_with_release(-1);
+            for (auto &flag: available_buffer) {
+                flag.store(static_cast<size_t>(-1), std::memory_order_relaxed);
             }
+            std::atomic_thread_fence(std::memory_order_release);
         }
 
         void add_gating_sequences(const std::initializer_list<std::reference_wrapper<Sequence> > sequences) {
@@ -72,11 +77,10 @@ namespace disruptor {
 
         void publish(const size_t low, const size_t high) {
             // Batch publish: plain stores for all slots, single release fence at end.
-            // Consumer uses acquire loads, so release-acquire pairing guarantees visibility.
             for (size_t i = low; i <= high; ++i) {
                 const size_t index = calculate_index(i);
                 const size_t flag = calculate_availability_flag(i);
-                available_buffer[index].set(flag); // plain store, no fence
+                available_buffer[index].store(flag, std::memory_order_relaxed);
             }
             std::atomic_thread_fence(std::memory_order_release);
         }
@@ -84,7 +88,8 @@ namespace disruptor {
         void set_available(const size_t sequence) {
             const size_t index = calculate_index(sequence);
             const size_t flag = calculate_availability_flag(sequence);
-            available_buffer[index].set_with_release(flag);
+            std::atomic_thread_fence(std::memory_order_release);
+            available_buffer[index].store(flag, std::memory_order_relaxed);
         }
 
         [[gnu::pure]] [[nodiscard]] size_t calculate_availability_flag(const size_t sequence) const {
@@ -98,7 +103,7 @@ namespace disruptor {
         [[gnu::hot]] [[nodiscard]] bool is_available(const size_t sequence) const {
             const size_t index = calculate_index(sequence);
             const size_t flag = calculate_availability_flag(sequence);
-            return available_buffer[index].get_with_acquire() == flag;
+            return available_buffer[index].load(std::memory_order_acquire) == flag;
         }
 
         [[nodiscard]] Sequence &get_cursor() {
