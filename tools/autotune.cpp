@@ -8,6 +8,8 @@
  *   ./autotune --scenario 1P1C --event-size 64
  *   ./autotune --scenario 1P3C --event-size 128 --no-pin
  *   ./autotune --all --event-size 64    # Run all scenarios
+ *   ./autotune --batch-sweep --scenario 2P1C --event-size 64
+ *   ./autotune --batch-sweep --all --event-size 8
  *
  * Scenarios: 1P1C, 1P2C, 1P3C, 2P1C, 3P1C, 2P2C
  * Event sizes: 8, 16, 32, 64, 128, 256, 512 (bytes)
@@ -34,6 +36,7 @@
 #include "sequencer/MultiProducerSequencer.hpp"
 #include "barriers/ProcessingSequenceBarrier.hpp"
 #include "processor/BatchEventProcessor.hpp"
+#include "producer/BatchProducer.hpp"
 #include "common/Common.hpp"
 #include "common/Util.hpp"
 
@@ -379,6 +382,112 @@ long run_2p2c() {
 }
 
 // ═══════════════════════════════════════════════════════════
+//  Batch producer benchmark templates (for --batch-sweep)
+// ═══════════════════════════════════════════════════════════
+
+// NP-1C with BatchProducer
+template<typename EV, size_t BUF, int NP, size_t BATCH, size_t PP>
+long run_Np1c_batch() {
+    using H = Handler<EV>;
+    constexpr size_t PP_ADJ = (PP / BATCH) * BATCH;
+    constexpr size_t TOT = PP_ADJ * NP;
+    using RB = RingBuffer<EV, BUF>;
+    using S = MultiProducerSequencer<EV, BUF, 1>;
+    using B = ProcessingSequenceBarrier<WaitStrategyType::ADAPTIVE, 1, S>;
+    using P = BatchEventProcessor<EV, BUF, H, B>;
+
+    auto rb = std::make_unique<RB>([] { return EV(); });
+    auto s = std::make_unique<S>(*rb);
+    auto cr = std::ref(s->get_cursor());
+    auto b = std::unique_ptr<B>(new B(true, {cr}, *s));
+    H h;
+    auto p = std::make_unique<P>(*b, h, *rb);
+    s->add_gating_sequences({std::ref(p->get_cursor())});
+
+    size_t exp = BUF + TOT;
+    std::thread tc([&] { pin(NP); p->run(); });
+
+    auto st = std::chrono::high_resolution_clock::now();
+    std::vector<std::thread> ps;
+    for (int i = 0; i < NP; ++i)
+        ps.emplace_back([&s, &rb, i] {
+            pin(i);
+            BatchProducer<S, RB, BATCH> producer(*s, *rb);
+            for (size_t j = 0; j < PP_ADJ; ++j) {
+                auto& event = producer.next();
+                event.value = static_cast<int64_t>(j);
+                producer.publish();
+            }
+            producer.flush();
+        });
+    for (auto& t : ps) t.join();
+    while (p->get_cursor().get_with_acquire() < exp) std::this_thread::yield();
+    auto en = std::chrono::high_resolution_clock::now();
+
+    p->halt();
+    tc.join();
+    auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(en - st).count();
+    return ms > 0 ? static_cast<long>(TOT * 1000L / ms) : 0;
+}
+
+// 2P-2C with BatchProducer
+template<typename EV, size_t BUF, size_t BATCH, size_t PP>
+long run_2p2c_batch() {
+    using H = Handler<EV>;
+    constexpr size_t PP_ADJ = (PP / BATCH) * BATCH;
+    constexpr size_t TOT = PP_ADJ * 2;
+    using RB = RingBuffer<EV, BUF>;
+    using S = MultiProducerSequencer<EV, BUF, 2>;
+    using B = ProcessingSequenceBarrier<WaitStrategyType::ADAPTIVE, 1, S>;
+    using P = BatchEventProcessor<EV, BUF, H, B>;
+
+    auto rb = std::make_unique<RB>([] { return EV(); });
+    auto s = std::make_unique<S>(*rb);
+    auto cr = std::ref(s->get_cursor());
+    auto b0 = std::unique_ptr<B>(new B(true, {cr}, *s));
+    auto b1 = std::unique_ptr<B>(new B(true, {cr}, *s));
+    H h0, h1;
+    auto p0 = std::make_unique<P>(*b0, h0, *rb);
+    auto p1 = std::make_unique<P>(*b1, h1, *rb);
+    s->add_gating_sequences({std::ref(p0->get_cursor()), std::ref(p1->get_cursor())});
+
+    size_t exp = BUF + TOT;
+    std::thread tc0([&] { pin(2); p0->run(); });
+    std::thread tc1([&] { pin(3); p1->run(); });
+
+    auto st = std::chrono::high_resolution_clock::now();
+    std::thread tp0([&] {
+        pin(0);
+        BatchProducer<S, RB, BATCH> producer(*s, *rb);
+        for (size_t j = 0; j < PP_ADJ; ++j) {
+            auto& event = producer.next();
+            event.value = static_cast<int64_t>(j);
+            producer.publish();
+        }
+        producer.flush();
+    });
+    std::thread tp1([&] {
+        pin(1);
+        BatchProducer<S, RB, BATCH> producer(*s, *rb);
+        for (size_t j = 0; j < PP_ADJ; ++j) {
+            auto& event = producer.next();
+            event.value = static_cast<int64_t>(j);
+            producer.publish();
+        }
+        producer.flush();
+    });
+    tp0.join(); tp1.join();
+    while (p0->get_cursor().get_with_acquire() < exp) std::this_thread::yield();
+    while (p1->get_cursor().get_with_acquire() < exp) std::this_thread::yield();
+    auto en = std::chrono::high_resolution_clock::now();
+
+    p0->halt(); p1->halt();
+    tc0.join(); tc1.join();
+    auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(en - st).count();
+    return ms > 0 ? static_cast<long>(TOT * 1000L / ms) : 0;
+}
+
+// ═══════════════════════════════════════════════════════════
 //  Bench runner with warmup + median
 // ═══════════════════════════════════════════════════════════
 static constexpr int WARMUP = 2;
@@ -403,6 +512,13 @@ struct Result {
     bool pinned;
     long ops_per_sec;
     size_t total_memory;  // ring buffer memory in bytes
+};
+
+struct BatchResult {
+    const char* scenario;
+    int event_bytes;
+    size_t batch_size;
+    long ops_per_sec;
 };
 
 // ═══════════════════════════════════════════════════════════
@@ -510,6 +626,79 @@ constexpr size_t mp_per_producer() {
     run_buf(std::integral_constant<size_t, 524288>{}, 524288); \
     run_buf(std::integral_constant<size_t, 1048576>{}, 1048576); \
 } while(0)
+
+// ═══════════════════════════════════════════════════════════
+//  Batch sweep macros — fixed BUF=64K + Adaptive, sweep batch sizes
+//  Batch sizes: 1, 2, 4, 8, 16, 32, 64, 128, 256
+// ═══════════════════════════════════════════════════════════
+#define SWEEP_BATCH_NP1C(EV, EV_SZ, NP, bresults) do { \
+    constexpr size_t PP = mp_per_producer<EV_SZ>(); \
+    constexpr size_t BUF = 65536; \
+    constexpr const char* scn = (NP==2) ? "2P1C" : "3P1C"; \
+    auto run_bs = [&](auto batch_tag) { \
+        constexpr size_t BS = decltype(batch_tag)::value; \
+        long r = bench(run_Np1c_batch<EV, BUF, NP, BS, PP>); \
+        bresults.push_back({scn, EV_SZ, BS, r}); \
+        printf("    batch=%-4zu  %ldM ops/s\n", BS, r/1000000); \
+    }; \
+    run_bs(std::integral_constant<size_t, 1>{}); \
+    run_bs(std::integral_constant<size_t, 2>{}); \
+    run_bs(std::integral_constant<size_t, 4>{}); \
+    run_bs(std::integral_constant<size_t, 8>{}); \
+    run_bs(std::integral_constant<size_t, 16>{}); \
+    run_bs(std::integral_constant<size_t, 32>{}); \
+    run_bs(std::integral_constant<size_t, 64>{}); \
+    run_bs(std::integral_constant<size_t, 128>{}); \
+    run_bs(std::integral_constant<size_t, 256>{}); \
+} while(0)
+
+#define SWEEP_BATCH_2P2C(EV, EV_SZ, bresults) do { \
+    constexpr size_t PP = mp_per_producer<EV_SZ>(); \
+    constexpr size_t BUF = 65536; \
+    auto run_bs = [&](auto batch_tag) { \
+        constexpr size_t BS = decltype(batch_tag)::value; \
+        long r = bench(run_2p2c_batch<EV, BUF, BS, PP>); \
+        bresults.push_back({"2P2C", EV_SZ, BS, r}); \
+        printf("    batch=%-4zu  %ldM ops/s\n", BS, r/1000000); \
+    }; \
+    run_bs(std::integral_constant<size_t, 1>{}); \
+    run_bs(std::integral_constant<size_t, 2>{}); \
+    run_bs(std::integral_constant<size_t, 4>{}); \
+    run_bs(std::integral_constant<size_t, 8>{}); \
+    run_bs(std::integral_constant<size_t, 16>{}); \
+    run_bs(std::integral_constant<size_t, 32>{}); \
+    run_bs(std::integral_constant<size_t, 64>{}); \
+    run_bs(std::integral_constant<size_t, 128>{}); \
+    run_bs(std::integral_constant<size_t, 256>{}); \
+} while(0)
+
+// Dispatch batch sweep by event size and scenario
+void run_batch_sweep(const char* scenario, int ev_bytes, std::vector<BatchResult>& bresults) {
+    printf("\n  Batch sweep %s with %dB events (BUF=64K, Adaptive)...\n", scenario, ev_bytes);
+
+    #define DISPATCH_EV_BATCH(BODY) do { \
+        if (ev_bytes == 8)        { using EV = EV8;   constexpr int ES = 8;   BODY; } \
+        else if (ev_bytes == 16)  { using EV = EV16;  constexpr int ES = 16;  BODY; } \
+        else if (ev_bytes == 32)  { using EV = EV32;  constexpr int ES = 32;  BODY; } \
+        else if (ev_bytes == 64)  { using EV = EV64;  constexpr int ES = 64;  BODY; } \
+        else if (ev_bytes == 128) { using EV = EV128; constexpr int ES = 128; BODY; } \
+        else if (ev_bytes == 256) { using EV = EV256; constexpr int ES = 256; BODY; } \
+        else if (ev_bytes == 512) { using EV = EV512; constexpr int ES = 512; BODY; } \
+        else { printf("  ERROR: Unsupported event size %d.\n", ev_bytes); } \
+    } while(0)
+
+    if (strcmp(scenario, "2P1C") == 0) {
+        DISPATCH_EV_BATCH(SWEEP_BATCH_NP1C(EV, ES, 2, bresults));
+    } else if (strcmp(scenario, "3P1C") == 0) {
+        DISPATCH_EV_BATCH(SWEEP_BATCH_NP1C(EV, ES, 3, bresults));
+    } else if (strcmp(scenario, "2P2C") == 0) {
+        DISPATCH_EV_BATCH(SWEEP_BATCH_2P2C(EV, ES, bresults));
+    } else {
+        printf("  ERROR: Batch sweep only applies to multi-producer scenarios (2P1C, 3P1C, 2P2C)\n");
+    }
+
+    #undef DISPATCH_EV_BATCH
+}
 
 // Dispatch by event size (runtime → compile-time)
 void run_scenario(const char* scenario, int ev_bytes, std::vector<Result>& results) {
@@ -628,6 +817,56 @@ void print_report(const std::vector<Result>& results) {
     printf("\n");
 }
 
+void print_batch_report(const std::vector<BatchResult>& bresults) {
+    if (bresults.empty()) return;
+
+    auto best = std::max_element(bresults.begin(), bresults.end(),
+                                  [](const BatchResult& a, const BatchResult& b) {
+                                      return a.ops_per_sec < b.ops_per_sec;
+                                  });
+
+    printf("\n");
+    printf("╔════════════════════════════════════════════════╗\n");
+    printf("║        OPTIMAL BATCH SIZE                     ║\n");
+    printf("╠════════════════════════════════════════════════╣\n");
+    printf("║  Scenario:       %-28s║\n", best->scenario);
+
+    char ev_str[32];
+    snprintf(ev_str, sizeof(ev_str), "%d bytes", best->event_bytes);
+    printf("║  Event size:     %-28s║\n", ev_str);
+
+    char bs_str[32];
+    snprintf(bs_str, sizeof(bs_str), "%zu", best->batch_size);
+    printf("║  Batch size:     %-28s║\n", bs_str);
+
+    char perf_str[32];
+    snprintf(perf_str, sizeof(perf_str), "%ld M ops/s", best->ops_per_sec / 1000000);
+    printf("║  Throughput:     %-28s║\n", perf_str);
+    printf("║  Buffer:         64K (fixed)                  ║\n");
+    printf("║  Wait strategy:  Adaptive (fixed)             ║\n");
+    printf("╚════════════════════════════════════════════════╝\n");
+
+    // Show all results sorted
+    auto sorted = bresults;
+    std::sort(sorted.begin(), sorted.end(),
+              [](const BatchResult& a, const BatchResult& b) { return a.ops_per_sec > b.ops_per_sec; });
+
+    printf("\n  All batch sizes (sorted by throughput):\n");
+    printf("  %-6s %-10s %-8s %s\n", "Rank", "Batch", "Scen", "Throughput");
+    printf("  ────── ────────── ──────── ──────────\n");
+    for (size_t i = 0; i < sorted.size(); ++i) {
+        auto& r = sorted[i];
+        printf("  #%-5zu %-10zu %-8s %ldM ops/s\n",
+               i + 1, r.batch_size, r.scenario, r.ops_per_sec / 1000000);
+    }
+
+    // Suggested code
+    printf("\n  Suggested C++ configuration:\n\n");
+    printf("    constexpr size_t BATCH_SIZE = %zu;\n", best->batch_size);
+    printf("    BatchProducer<SequencerType, RingBufferType, BATCH_SIZE> producer(sequencer, ring_buffer);\n");
+    printf("\n");
+}
+
 // ═══════════════════════════════════════════════════════════
 //  Main
 // ═══════════════════════════════════════════════════════════
@@ -638,11 +877,15 @@ void print_usage() {
     printf("  --event-size <N>    Event struct size in bytes: 8,16,32,64,128,256,512\n");
     printf("  --no-pin            Disable thread pinning\n");
     printf("  --all               Run all scenarios\n");
+    printf("  --batch-sweep       Find optimal batch size for multi-producer scenarios\n");
+    printf("                      (sweeps batch=1..256, fixed BUF=64K + Adaptive)\n");
     printf("  --help              Show this help\n");
     printf("\nExamples:\n");
     printf("  autotune --scenario 1P1C --event-size 64\n");
     printf("  autotune --scenario 1P3C --event-size 128\n");
     printf("  autotune --all --event-size 32\n");
+    printf("  autotune --batch-sweep --scenario 2P1C --event-size 64\n");
+    printf("  autotune --batch-sweep --all --event-size 8\n");
     printf("\nInteractive mode (no arguments): prompts for scenario and event size.\n");
 }
 
@@ -652,6 +895,7 @@ int main(int argc, char* argv[]) {
     const char* scenario = nullptr;
     int ev_bytes = 0;
     bool run_all = false;
+    bool batch_sweep = false;
 
     // Parse args
     for (int i = 1; i < argc; ++i) {
@@ -663,6 +907,8 @@ int main(int argc, char* argv[]) {
             g_pin = false;
         } else if (strcmp(argv[i], "--all") == 0) {
             run_all = true;
+        } else if (strcmp(argv[i], "--batch-sweep") == 0) {
+            batch_sweep = true;
         } else if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-h") == 0) {
             print_usage();
             return 0;
@@ -670,25 +916,51 @@ int main(int argc, char* argv[]) {
     }
 
     // Interactive mode if no args
-    if (!scenario && !run_all && ev_bytes == 0) {
+    if (!scenario && !run_all && ev_bytes == 0 && !batch_sweep) {
         printf("Disruptor++ Auto-Tune (interactive mode)\n\n");
-        printf("Select scenario:\n");
-        printf("  1) 1P1C  — 1 producer, 1 consumer\n");
-        printf("  2) 1P2C  — 1 producer, 2 consumers\n");
-        printf("  3) 1P3C  — 1 producer, 3 consumers\n");
-        printf("  4) 2P1C  — 2 producers, 1 consumer\n");
-        printf("  5) 3P1C  — 3 producers, 1 consumer\n");
-        printf("  6) 2P2C  — 2 producers, 2 consumers\n");
-        printf("  7) ALL   — run all scenarios\n");
-        printf("\nChoice [1-7]: ");
+        printf("Select mode:\n");
+        printf("  A) Buffer + Wait Strategy sweep (find optimal buffer size & strategy)\n");
+        printf("  B) Batch Size sweep (find optimal batch size for multi-producer)\n");
+        printf("\nMode [A/B]: ");
 
-        int choice = 0;
-        if (scanf("%d", &choice) != 1) { printf("Invalid input.\n"); return 1; }
+        char mode_choice = 'A';
+        if (scanf(" %c", &mode_choice) != 1) { printf("Invalid input.\n"); return 1; }
+        if (mode_choice == 'b' || mode_choice == 'B') batch_sweep = true;
 
-        static const char* scenarios[] = {"1P1C","1P2C","1P3C","2P1C","3P1C","2P2C"};
-        if (choice >= 1 && choice <= 6) scenario = scenarios[choice - 1];
-        else if (choice == 7) run_all = true;
-        else { printf("Invalid choice.\n"); return 1; }
+        if (batch_sweep) {
+            printf("\nSelect multi-producer scenario:\n");
+            printf("  1) 2P1C  — 2 producers, 1 consumer\n");
+            printf("  2) 3P1C  — 3 producers, 1 consumer\n");
+            printf("  3) 2P2C  — 2 producers, 2 consumers\n");
+            printf("  4) ALL   — run all multi-producer scenarios\n");
+            printf("\nChoice [1-4]: ");
+
+            int choice = 0;
+            if (scanf("%d", &choice) != 1) { printf("Invalid input.\n"); return 1; }
+
+            static const char* mp_scenarios[] = {"2P1C", "3P1C", "2P2C"};
+            if (choice >= 1 && choice <= 3) scenario = mp_scenarios[choice - 1];
+            else if (choice == 4) run_all = true;
+            else { printf("Invalid choice.\n"); return 1; }
+        } else {
+            printf("\nSelect scenario:\n");
+            printf("  1) 1P1C  — 1 producer, 1 consumer\n");
+            printf("  2) 1P2C  — 1 producer, 2 consumers\n");
+            printf("  3) 1P3C  — 1 producer, 3 consumers\n");
+            printf("  4) 2P1C  — 2 producers, 1 consumer\n");
+            printf("  5) 3P1C  — 3 producers, 1 consumer\n");
+            printf("  6) 2P2C  — 2 producers, 2 consumers\n");
+            printf("  7) ALL   — run all scenarios\n");
+            printf("\nChoice [1-7]: ");
+
+            int choice = 0;
+            if (scanf("%d", &choice) != 1) { printf("Invalid input.\n"); return 1; }
+
+            static const char* scenarios[] = {"1P1C","1P2C","1P3C","2P1C","3P1C","2P2C"};
+            if (choice >= 1 && choice <= 6) scenario = scenarios[choice - 1];
+            else if (choice == 7) run_all = true;
+            else { printf("Invalid choice.\n"); return 1; }
+        }
 
         printf("\nEvent struct size in bytes:\n");
         printf("  8, 16, 32, 64, 128, 256, 512\n");
@@ -721,8 +993,15 @@ int main(int argc, char* argv[]) {
     printf("  Thread pinning: %s\n", g_pin ? "YES" : "NO");
     printf("  Warmup:        %d runs\n", WARMUP);
     printf("  Measurement:   %d runs (median)\n", RUNS);
-    printf("  Buffer sizes:  4K → 1M (9 steps)\n");
-    printf("  Wait strategies: Adaptive, Yield, BusySpin\n");
+    if (batch_sweep) {
+        printf("  Mode:          BATCH SWEEP\n");
+        printf("  Buffer:        64K (fixed)\n");
+        printf("  Wait strategy: Adaptive (fixed)\n");
+        printf("  Batch sizes:   1, 2, 4, 8, 16, 32, 64, 128, 256\n");
+    } else {
+        printf("  Buffer sizes:  4K → 1M (9 steps)\n");
+        printf("  Wait strategies: Adaptive, Yield, BusySpin\n");
+    }
 
     int need_cores = 4;  // max needed (2P2C or 1P3C)
     if (g_pin && static_cast<int>(g_topo.best_cores.size()) < need_cores) {
@@ -731,18 +1010,33 @@ int main(int argc, char* argv[]) {
         printf("  Some scenarios may not get dedicated cores.\n");
     }
 
-    std::vector<Result> results;
+    if (batch_sweep) {
+        std::vector<BatchResult> bresults;
 
-    if (run_all) {
-        const char* all_scenarios[] = {"1P1C", "1P2C", "1P3C", "2P1C", "3P1C", "2P2C"};
-        for (auto* s : all_scenarios) {
-            run_scenario(s, ev_bytes, results);
+        if (run_all) {
+            const char* mp_scenarios[] = {"2P1C", "3P1C", "2P2C"};
+            for (auto* s : mp_scenarios) {
+                run_batch_sweep(s, ev_bytes, bresults);
+            }
+        } else {
+            run_batch_sweep(scenario, ev_bytes, bresults);
         }
-    } else {
-        run_scenario(scenario, ev_bytes, results);
-    }
 
-    print_report(results);
+        print_batch_report(bresults);
+    } else {
+        std::vector<Result> results;
+
+        if (run_all) {
+            const char* all_scenarios[] = {"1P1C", "1P2C", "1P3C", "2P1C", "3P1C", "2P2C"};
+            for (auto* s : all_scenarios) {
+                run_scenario(s, ev_bytes, results);
+            }
+        } else {
+            run_scenario(scenario, ev_bytes, results);
+        }
+
+        print_report(results);
+    }
 
     return 0;
 }

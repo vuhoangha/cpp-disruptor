@@ -116,22 +116,25 @@ Chỉ cần chạy không arguments:
 ```
 
 Tool sẽ hỏi lần lượt:
-1. Chọn scenario (1-7)
-2. Nhập event size (bytes)
-3. Bật/tắt thread pinning
+1. Chọn mode: A (buffer/strategy sweep) hoặc B (batch size sweep)
+2. Chọn scenario
+3. Nhập event size (bytes)
+4. Bật/tắt thread pinning
 
-**Ví dụ session:**
+**Ví dụ session (mode A — buffer/strategy sweep):**
 
 ```
 Disruptor++ Auto-Tune (interactive mode)
 
+Select mode:
+  A) Buffer + Wait Strategy sweep (find optimal buffer size & strategy)
+  B) Batch Size sweep (find optimal batch size for multi-producer)
+
+Mode [A/B]: A
+
 Select scenario:
   1) 1P1C  — 1 producer, 1 consumer
-  2) 1P2C  — 1 producer, 2 consumers
-  3) 1P3C  — 1 producer, 3 consumers
-  4) 2P1C  — 2 producers, 1 consumer
-  5) 3P1C  — 3 producers, 1 consumer
-  6) 2P2C  — 2 producers, 2 consumers
+  ...
   7) ALL   — run all scenarios
 
 Choice [1-7]: 1
@@ -142,6 +145,21 @@ Event struct size in bytes:
 Size [bytes]: 64
 
 Enable thread pinning? [Y/n]: Y
+```
+
+**Ví dụ session (mode B — batch sweep):**
+
+```
+Mode [A/B]: B
+
+Select multi-producer scenario:
+  1) 2P1C  — 2 producers, 1 consumer
+  2) 3P1C  — 3 producers, 1 consumer
+  3) 2P2C  — 2 producers, 2 consumers
+  4) ALL   — run all multi-producer scenarios
+
+Choice [1-4]: 1
+Size [bytes]: 8
 ```
 
 ### 3.2 CLI mode (cho scripting / CI)
@@ -160,7 +178,23 @@ Enable thread pinning? [Y/n]: Y
 ./tools/autotune --help
 ```
 
-### 3.3 Các tình huống sử dụng phổ biến
+### 3.3 Batch sweep mode (tìm optimal batch size cho multi-producer)
+
+```bash
+# Tìm optimal batch size cho 2P1C
+./tools/autotune --batch-sweep --scenario 2P1C --event-size 64
+
+# Tìm cho tất cả multi-producer scenarios
+./tools/autotune --batch-sweep --all --event-size 8
+
+# Kết hợp với --no-pin
+./tools/autotune --batch-sweep --scenario 3P1C --event-size 128 --no-pin
+```
+
+Batch sweep giữ cố định buffer=64K + Adaptive strategy, chỉ sweep 9 batch sizes (1→256).
+Output cho biết batch size nào cho throughput cao nhất + suggested C++ code dùng `BatchProducer`.
+
+### 3.4 Các tình huống sử dụng phổ biến
 
 **"Tôi có 1 producer ghi market data, 1 consumer xử lý"**
 
@@ -447,6 +481,19 @@ Có, nhưng:
 - Dùng `--no-pin` nếu container bị giới hạn CPU cores
 - Kết quả phản ánh performance thực tế trong container (bao gồm cả overhead VM/container)
 - Thread pinning có thể conflict với container orchestrator (Kubernetes CPU limits)
+
+### "Batch sweep là gì? Khi nào cần dùng?"
+
+Batch sweep tìm **batch size tối ưu** cho BatchProducer — chỉ áp dụng cho **multi-producer scenarios** (2P1C, 3P1C, 2P2C).
+
+Multi-producer bị bottleneck bởi atomic `lock xaddq` trên shared cursor (~25M ops/s).
+BatchProducer claim N slots cùng lúc → giảm contention N lần. Batch=32 đạt 625M (28x improvement).
+
+Batch sweep giữ cố định BUF=64K + Adaptive (optimal từ buffer sweep), chỉ sweep batch sizes:
+1, 2, 4, 8, 16, 32, 64, 128, 256.
+
+**Khi nào dùng**: Sau khi đã chạy buffer/strategy sweep (mode A) cho single-producer scenarios,
+chuyển sang batch sweep (mode B) để tối ưu multi-producer.
 
 ### "Tôi cần thêm event size khác (ví dụ 1024 bytes)?"
 

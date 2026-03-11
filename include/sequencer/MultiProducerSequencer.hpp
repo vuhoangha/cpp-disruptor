@@ -75,7 +75,7 @@ namespace disruptor {
             set_available(sequence);
         }
 
-        void publish(const size_t low, const size_t high) {
+        [[gnu::hot]] void publish(const size_t low, const size_t high) {
             // Batch publish: plain stores for all slots, single release fence at end.
             for (size_t i = low; i <= high; ++i) {
                 const size_t index = calculate_index(i);
@@ -117,6 +117,10 @@ namespace disruptor {
         [[gnu::hot]] [[nodiscard]] size_t get_highest_published_sequence(const size_t lower_bound,
                                                             const size_t available_sequence) const {
             for (size_t sequence = lower_bound; sequence <= available_sequence; ++sequence) {
+                // Prefetch ahead to hide memory latency during sequential scan
+                if (sequence + 4 <= available_sequence) [[likely]] {
+                    __builtin_prefetch(&available_buffer[calculate_index(sequence + 4)], 0, 3);
+                }
                 if (!is_available(sequence)) [[unlikely]] {
                     return sequence - 1;
                 }

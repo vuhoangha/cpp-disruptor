@@ -26,6 +26,7 @@ set(DISRUPTOR_INCLUDE_DIRS
     ${CMAKE_SOURCE_DIR}/include/sequence
     ${CMAKE_SOURCE_DIR}/include/sequencer
     ${CMAKE_SOURCE_DIR}/include/wait_strategy
+    ${CMAKE_SOURCE_DIR}/include/producer
 )
 
 # Thêm các thư mục con
