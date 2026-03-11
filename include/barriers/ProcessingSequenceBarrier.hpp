@@ -1,5 +1,26 @@
 #pragma once
 
+/**
+ * @file ProcessingSequenceBarrier.hpp
+ * @brief Coordinates between producers and consumers via a pluggable wait strategy.
+ *
+ * Each BatchEventProcessor has its own barrier instance. The barrier:
+ *   1. Waits for new events using the configured wait strategy (Adaptive/Yield/BusySpin)
+ *   2. Handles the alert mechanism for graceful shutdown (halt signal)
+ *   3. For multi-producer, delegates to sequencer.get_highest_published_sequence()
+ *      to find the highest contiguous published sequence (since multi-producer
+ *      can publish out of order)
+ *
+ * The `direct_publisher_event_listener` flag distinguishes:
+ *   - true:  consumer listens directly to the producer's cursor → must check for
+ *            gaps in multi-producer via get_highest_published_sequence()
+ *   - false: consumer listens to another consumer's sequence → no gaps possible
+ *
+ * @tparam T                          WaitStrategyType enum value.
+ * @tparam NUMBER_DEPENDENT_SEQUENCES Number of sequences this barrier depends on.
+ * @tparam SequencerType              SingleProducerSequencer or MultiProducerSequencer.
+ */
+
 #include <thread>
 #include <cassert>
 #include "../sequence/Sequence.hpp"
@@ -10,11 +31,9 @@
 #include "../wait_strategy/YieldingWaitStrategy.hpp"
 #include "../wait_strategy/BusySpinWaitStrategy.hpp"
 
-/**
- * each processor will have a single corresponding sequence barrier. The purpose is to optimize cache
- * values within sequence barrier for each processor and to avoid race conditions.
- */
 namespace disruptor {
+
+    /// Compile-time mapping from WaitStrategyType enum → concrete strategy class.
     template<WaitStrategyType T, size_t NUMBER_DEPENDENT_SEQUENCES>
     struct WaitStrategySelector;
 
@@ -38,7 +57,7 @@ namespace disruptor {
         alignas(CACHE_LINE_SIZE) const char padding_1[CACHE_LINE_SIZE] = {};
         using Strategy = typename WaitStrategySelector<T, NUMBER_DEPENDENT_SEQUENCES>::type;
         Strategy wait_strategy;
-        const bool direct_publisher_event_listener; // listen directly to events from the publisher, not from any dependent processor
+        const bool direct_publisher_event_listener;
         const char padding_2[CACHE_LINE_SIZE * 2] = {};
 
         alignas(CACHE_LINE_SIZE) SequenceGroupForSingleThread<NUMBER_DEPENDENT_SEQUENCES> dependent_sequences;
@@ -72,9 +91,19 @@ namespace disruptor {
             : direct_publisher_event_listener(direct_publisher_event_listener),
               dependent_sequences(dependent_sequences),
               alerted(false),
-              sequencer(sequencer) {
-        }
+              sequencer(sequencer) {}
 
+        /**
+         * @brief Wait until the given sequence is available for processing.
+         *
+         * @param sequence The sequence number the consumer wants to process.
+         * @return The highest available sequence, or SEQUENCE_ALERT if halted.
+         *
+         * For multi-producer with direct_publisher_event_listener=true, the returned
+         * sequence may be less than what the wait strategy reported, because
+         * get_highest_published_sequence() finds the highest contiguous range
+         * (there may be gaps from out-of-order publishing).
+         */
         [[gnu::hot]] size_t wait_for(size_t sequence) noexcept {
             assert(same_thread() && "Accessed by two threads");
             if (alerted) [[unlikely]] return SEQUENCE_ALERT;
@@ -94,6 +123,7 @@ namespace disruptor {
             return alerted;
         }
 
+        /// Signal this barrier to stop — consumer will see SEQUENCE_ALERT on next wait.
         void alert() {
             alerted = true;
         }
@@ -103,15 +133,15 @@ namespace disruptor {
         }
 
         [[gnu::hot]] void check_alert() const {
-            if (alerted) [[unlikely]]{
+            if (alerted) [[unlikely]] {
                 throw AlertException();
             }
         }
-
     };
 
     // Deduction guide
     template<WaitStrategyType T, size_t N, typename S>
     ProcessingSequenceBarrier(bool, std::initializer_list<std::reference_wrapper<Sequence>>, S &)
         -> ProcessingSequenceBarrier<T, N, S>;
-}
+
+} // namespace disruptor

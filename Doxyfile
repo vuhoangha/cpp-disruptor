@@ -1,0 +1,53 @@
+# Doxyfile for Disruptor++ (C++20)
+
+PROJECT_NAME           = "Disruptor++"
+PROJECT_BRIEF          = "High-performance C++20 LMAX Disruptor implementation"
+PROJECT_NUMBER         = "1.0"
+
+# Input
+INPUT                  = include/
+RECURSIVE              = YES
+FILE_PATTERNS          = *.hpp
+EXCLUDE_PATTERNS       = */test/* */bench/*
+
+# Output
+OUTPUT_DIRECTORY       = docs/doxygen
+GENERATE_HTML          = YES
+GENERATE_LATEX         = NO
+HTML_OUTPUT            = html
+
+# C++ parsing
+EXTRACT_ALL            = YES
+EXTRACT_PRIVATE        = YES
+EXTRACT_STATIC         = YES
+
+# Display
+BRIEF_MEMBER_DESC      = YES
+REPEAT_BRIEF           = YES
+INLINE_INHERITED_MEMB  = YES
+SORT_MEMBER_DOCS       = NO
+SHOW_NAMESPACES        = YES
+
+# Source browser
+SOURCE_BROWSER         = YES
+INLINE_SOURCES         = NO
+STRIP_CODE_COMMENTS    = NO
+
+# Diagrams (requires graphviz)
+HAVE_DOT               = YES
+CLASS_DIAGRAMS         = YES
+CLASS_GRAPH            = YES
+COLLABORATION_GRAPH    = YES
+INCLUDE_GRAPH          = YES
+INCLUDED_BY_GRAPH      = YES
+CALL_GRAPH             = NO
+CALLER_GRAPH           = NO
+DOT_IMAGE_FORMAT       = svg
+INTERACTIVE_SVG        = YES
+
+# Template handling
+TEMPLATE_RELATIONS     = YES
+
+# Warnings
+WARN_IF_UNDOCUMENTED   = YES
+WARN_NO_PARAMDOC       = NO

@@ -1,5 +1,20 @@
 #pragma once
 
+/**
+ * @file SequenceGroupForMultiThread.hpp
+ * @brief Tracks the minimum sequence across multiple consumers (multi-threaded access).
+ *
+ * Used by MultiProducerSequencer where multiple producer threads concurrently
+ * call get() to find the slowest consumer. Unlike the single-thread variant,
+ * this does NOT cache the minimum — caching would require synchronization
+ * between producer threads, which would be more expensive than just scanning.
+ *
+ * For N producers accessing this, the cost is N × (number_of_consumers) acquire loads
+ * per call, but this is on the slow path (only when the ring buffer is nearly full).
+ *
+ * Template specialization for N=1 reduces to a single pointer dereference.
+ */
+
 #include <cassert>
 #include <array>
 #include <limits>
@@ -7,10 +22,11 @@
 #include "Sequence.hpp"
 
 namespace disruptor {
+
     template<size_t NUMBER_DEPENDENT_SEQUENCES>
     class SequenceGroupForMultiThread final {
         alignas(CACHE_LINE_SIZE) const char padding_1[CACHE_LINE_SIZE] = {};
-        std::array<Sequence *, NUMBER_DEPENDENT_SEQUENCES> sequences; // Contains an array of pointers to sequences
+        std::array<Sequence *, NUMBER_DEPENDENT_SEQUENCES> sequences;
         const char padding_2[CACHE_LINE_SIZE * 2] = {};
 
     public:
@@ -32,6 +48,8 @@ namespace disruptor {
             }
         }
 
+        /// Scan all consumer sequences and return the minimum (slowest consumer).
+        /// No caching — safe for concurrent access from multiple producer threads.
         [[gnu::hot]] [[nodiscard]] size_t get() {
             size_t minimum_sequence = std::numeric_limits<size_t>::max();
             for (const auto &sequence: sequences) {
@@ -42,6 +60,7 @@ namespace disruptor {
         }
     };
 
+    /// Specialization for single consumer — direct pointer dereference, no array.
     template<>
     class SequenceGroupForMultiThread<1> final {
         alignas(CACHE_LINE_SIZE) const char padding_1[CACHE_LINE_SIZE] = {};
@@ -54,8 +73,7 @@ namespace disruptor {
             set_sequences(dependent_sequences);
         }
 
-        explicit SequenceGroupForMultiThread() : sequence(nullptr) {
-        }
+        explicit SequenceGroupForMultiThread() : sequence(nullptr) {}
 
         void set_sequences(const std::initializer_list<std::reference_wrapper<Sequence> > dependent_sequences) {
             assert(dependent_sequences.size() == 1 && "Require exactly 1 sequence");
@@ -66,4 +84,5 @@ namespace disruptor {
             return sequence->get_with_acquire();
         }
     };
-}
+
+} // namespace disruptor

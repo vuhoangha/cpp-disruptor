@@ -1,14 +1,23 @@
 #pragma once
 
+/**
+ * @file YieldingWaitStrategy.hpp
+ * @brief Spin 200 iterations with PAUSE hint, then yield the thread.
+ *
+ * Matches the LMAX Java Disruptor's YieldingWaitStrategy behavior.
+ * After exhausting spin tries, falls back to std::this_thread::yield()
+ * which gives up the CPU timeslice but doesn't sleep.
+ *
+ * Trade-off: lower average latency than Adaptive under sustained load,
+ * but higher CPU usage (no sleep phase). In practice, Adaptive often
+ * wins on throughput due to avoiding thermal throttling.
+ */
+
 #include <thread>
 #include "../sequence/SequenceGroupForSingleThread.hpp"
 
 namespace disruptor {
-    /**
-     * YieldingWaitStrategy: Spin for SPIN_TRIES iterations, then yield.
-     * Matches LMAX Java's YieldingWaitStrategy behavior.
-     * Good balance between latency and CPU usage.
-     */
+
     template<size_t NUMBER_DEPENDENT_SEQUENCES>
     class YieldingWaitStrategy final {
         static constexpr int SPIN_TRIES = 200;
@@ -37,6 +46,6 @@ namespace disruptor {
 
             return available_sequence;
         }
-
     };
-}
+
+} // namespace disruptor

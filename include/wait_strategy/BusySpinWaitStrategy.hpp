@@ -1,12 +1,19 @@
 #pragma once
 
+/**
+ * @file BusySpinWaitStrategy.hpp
+ * @brief Non-stop spinning with PAUSE/YIELD hint. Lowest latency, highest CPU usage.
+ *
+ * WARNING: Under sustained load, this strategy burns 100% CPU on the consumer core,
+ * which can cause thermal throttling and actually REDUCE throughput compared to
+ * Adaptive. Best suited for ultra-low latency requirements with bursty workloads
+ * where the consumer is expected to catch up quickly.
+ */
+
 #include "../sequence/SequenceGroupForSingleThread.hpp"
 
 namespace disruptor {
-    /**
-     * BusySpinWaitStrategy: Spins with CPU hint between checks.
-     * Lowest latency but highest CPU usage.
-     */
+
     template<size_t NUMBER_DEPENDENT_SEQUENCES>
     class BusySpinWaitStrategy final {
     public:
@@ -28,4 +35,5 @@ namespace disruptor {
             return available_sequence;
         }
     };
-}
+
+} // namespace disruptor
